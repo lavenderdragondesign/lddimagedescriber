@@ -17,13 +17,13 @@ exports.handler = async function(event, context) {
     // 1. Create image description prompt
     let descriptionPrompt;
     if (backgroundColor === 'black') {
-      descriptionPrompt = "Provide a detailed image description and specify the black background. Limit to ~60 words.";
+      descriptionPrompt = "Provide a detailed image description and specify the black background. Limit to ~80 words.";
     } else if (backgroundColor === 'white') {
-      descriptionPrompt = "Provide a detailed image description and specify the white background. Limit to ~60 words.";
+      descriptionPrompt = "Provide a detailed image description and specify the white background. Limit to ~80 words.";
     } else if (backgroundColor === 'transparent') {
-      descriptionPrompt = "Provide a detailed image description and specify the transparent background. Limit to ~60 words.";
+      descriptionPrompt = "Provide a detailed image description and specify the transparent background. Limit to ~80 words.";
     } else {
-      descriptionPrompt = "Provide a detailed description of this image including background color and visual elements. Limit to ~60 words.";
+      descriptionPrompt = "Provide a detailed description of this image including background color and visual elements. Limit to ~80 words.";
     }
 
     const descriptionPayload = {

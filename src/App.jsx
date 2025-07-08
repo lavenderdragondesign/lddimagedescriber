@@ -197,7 +197,7 @@ function App() {
   return (
     <div className="min-h-screen p-4 bg-gray-100 font-sans">
       <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-6">
-        <h1 className="text-2xl font-bold mb-4">Image Describer</h1>
+        <h1 className="text-2xl font-bold mb-4">LavenderDragonDesign's Image Describer & SEO Keywords For Etsy/POD</h1>
         <input type="file" onChange={handleImageChange} className="mb-4" />
 
         {selectedImage && (
