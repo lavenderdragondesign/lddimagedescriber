@@ -1,12 +1,3 @@
-# dependencies
 /node_modules
-
-# production
 /dist
-
-# local env
 .env
-
-# IDEs
-.vscode
-.DS_Store
