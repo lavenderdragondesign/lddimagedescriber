@@ -133,9 +133,9 @@ function App() {
 
       if (!descriptionResponse.ok) throw new Error(`API error: ${descriptionResponse.status}`);
       const descriptionResult = await descriptionResponse.json();
-      const generatedDescription = descriptionResult?.candidates?.[0]?.content?.parts?.[0]?.text;
+      const generatedDescription = descriptionResult?.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
-      if (!generatedDescription) {
+      if (!generatedDescription.trim()) {
         throw new Error('No image description returned by API.');
       }
 
@@ -173,9 +173,9 @@ function App() {
 
       if (!keywordsResponse.ok) throw new Error(`API error: ${keywordsResponse.status}`);
       const keywordsResult = await keywordsResponse.json();
-      const jsonString = keywordsResult?.candidates?.[0]?.content?.parts?.[0]?.text;
+      const jsonString = keywordsResult?.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
-      if (!jsonString) {
+      if (!jsonString.trim()) {
         throw new Error('No keywords returned by API.');
       }
 
@@ -194,7 +194,89 @@ function App() {
     }
   };
 
-  return <div />;
+  return (
+    <div className="min-h-screen p-4 bg-gray-100 font-sans">
+      <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-6">
+        <h1 className="text-2xl font-bold mb-4">Image Describer</h1>
+        <input type="file" onChange={handleImageChange} className="mb-4" />
+
+        {selectedImage && (
+          <img
+            src={URL.createObjectURL(selectedImage)}
+            alt="Preview"
+            className="mb-4 max-w-full rounded border"
+            style={{ maxHeight: '300px' }}
+          />
+        )}
+
+        <div className="mb-4">
+          <label className="block font-medium mb-1">Select Product Types:</label>
+          {productTypes.map((type) => (
+            <label key={type} className="inline-flex items-center mr-4">
+              <input
+                type="checkbox"
+                checked={selectedProductTypes.includes(type)}
+                onChange={() => handleProductTypeChange(type)}
+              />
+              <span className="ml-1 capitalize">{type}</span>
+            </label>
+          ))}
+        </div>
+
+        <div className="mb-4">
+          <label className="block font-medium mb-1">Select Background Color:</label>
+          {['auto-detect', 'black', 'white', 'transparent'].map((color) => (
+            <label key={color} className="inline-flex items-center mr-4">
+              <input
+                type="radio"
+                value={color}
+                checked={selectedBackgroundColor === color}
+                onChange={handleBackgroundColorChange}
+              />
+              <span className="ml-1 capitalize">{color}</span>
+            </label>
+          ))}
+        </div>
+
+        <button
+          onClick={analyzeImageAndGenerateKeywords}
+          disabled={isLoading}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold transition"
+        >
+          {isLoading ? 'Processing...' : 'Analyze Image'}
+        </button>
+
+        {errorMessage && <p className="mt-4 text-red-600">{errorMessage}</p>}
+
+        {imageDescription && (
+          <div className="mt-4">
+            <h2 className="font-bold">Description</h2>
+            <p className="text-gray-800 whitespace-pre-wrap">{imageDescription}</p>
+          </div>
+        )}
+
+        {(shortTailKeywords.length > 0 || longTailKeywords.length > 0) && (
+          <div className="mt-4">
+            <h2 className="font-bold mb-2">Keywords</h2>
+            <div className="mb-2">
+              <strong>Short-Tail:</strong>
+              <ul className="list-disc list-inside">
+                {shortTailKeywords.map((k, i) => <li key={i}>{k}</li>)}
+              </ul>
+            </div>
+            <div>
+              <strong>Long-Tail:</strong>
+              <ul className="list-disc list-inside">
+                {longTailKeywords.map((k, i) => <li key={i}>{k}</li>)}
+              </ul>
+            </div>
+          </div>
+        )}
+
+        {copyMessage && <p className="mt-2 text-green-600">{copyMessage}</p>}
+      </div>
+    </div>
+  );
 }
 
 export default App;
