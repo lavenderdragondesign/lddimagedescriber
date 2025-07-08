@@ -1,29 +1,38 @@
-const fetch = require("node-fetch");
+const fetch = require('node-fetch');
 
-exports.handler = async function(event, context) {
+exports.handler = async (event) => {
   try {
-    const { imageBase64, mimeType, backgroundColor, productTypes } = JSON.parse(event.body);
+    const { imageBase64, mimeType, backgroundColor, productTypes } = JSON.parse(event.body || '{}');
 
     if (!imageBase64 || !mimeType) {
       return {
         statusCode: 400,
-        body: JSON.stringify({ error: "Missing required image data." }),
+        body: JSON.stringify({ error: "Missing imageBase64 or mimeType." })
       };
     }
 
     const apiKey = process.env.GEMINI_API_KEY;
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+    if (!apiKey) {
+      return {
+        statusCode: 500,
+        body: JSON.stringify({ error: "API key is missing." })
+      };
+    }
 
-    // 1. Create image description prompt
+    // --- Step 1: Generate Description ---
     let descriptionPrompt;
-    if (backgroundColor === 'black') {
-      descriptionPrompt = "Provide a detailed image description and specify the black background. Limit to ~80 words.";
-    } else if (backgroundColor === 'white') {
-      descriptionPrompt = "Provide a detailed image description and specify the white background. Limit to ~80 words.";
-    } else if (backgroundColor === 'transparent') {
-      descriptionPrompt = "Provide a detailed image description and specify the transparent background. Limit to ~80 words.";
-    } else {
-      descriptionPrompt = "Provide a detailed description of this image including background color and visual elements. Limit to ~80 words.";
+    switch (backgroundColor) {
+      case 'black':
+        descriptionPrompt = "Describe this image in ~60 words. Highlight subjects, layout, colors, and mention the background is black.";
+        break;
+      case 'white':
+        descriptionPrompt = "Describe this image in ~60 words. Highlight subjects, layout, colors, and mention the background is white.";
+        break;
+      case 'transparent':
+        descriptionPrompt = "Describe this image in ~60 words. Highlight subjects, layout, colors, and mention the background is transparent.";
+        break;
+      default:
+        descriptionPrompt = "Describe this image in ~60 words. Start by identifying the dominant background color, then cover the layout, elements, and mood.";
     }
 
     const descriptionPayload = {
@@ -43,24 +52,28 @@ exports.handler = async function(event, context) {
       ]
     };
 
-    const descriptionResponse = await fetch(apiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(descriptionPayload)
-    });
+    const descriptionResponse = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(descriptionPayload)
+      }
+    );
 
-    const descriptionJson = await descriptionResponse.json();
-    const descriptionText = descriptionJson.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const descriptionResult = await descriptionResponse.json();
+    const description = descriptionResult?.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
-    // 2. Keyword generation
-    const productHint = productTypes?.length
-      ? `Consider these product types for keywords: ${productTypes.join(", ")}.`
-      : "";
+    if (!description) {
+      throw new Error("Gemini did not return a description.");
+    }
 
-    const keywordPrompt = `Based on this image description, generate a JSON object with two arrays: "shortTailKeywords" and "longTailKeywords". Use Etsy-style SEO terms. ${productHint}
-Description: "${descriptionText}"`;
+    // --- Step 2: Generate Keywords ---
+    const keywordPrompt = `Based on this description, generate JSON with two arrays: "shortTailKeywords" and "longTailKeywords" — each with 6-7 items. 
+${productTypes?.length ? `Focus on these product types: ${productTypes.join(', ')}.` : ''}
+Description: "${description}"`;
 
-    const keywordPayload = {
+    const keywordsPayload = {
       contents: [{ role: "user", parts: [{ text: keywordPrompt }] }],
       generationConfig: {
         responseMimeType: "application/json",
@@ -80,30 +93,43 @@ Description: "${descriptionText}"`;
       }
     };
 
-    const keywordResponse = await fetch(apiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(keywordPayload)
-    });
+    const keywordResponse = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(keywordsPayload)
+      }
+    );
 
-    const keywordJson = await keywordResponse.json();
-    const rawText = keywordJson.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    const cleanedJson = rawText.replace(/[“”]/g, '"');
-    const parsed = JSON.parse(cleanedJson);
+    const keywordResult = await keywordResponse.json();
+    const keywordString = keywordResult?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+    if (!keywordString) {
+      throw new Error("Gemini did not return keyword content.");
+    }
+
+    let parsedKeywords = { shortTailKeywords: [], longTailKeywords: [] };
+    try {
+      parsedKeywords = JSON.parse(keywordString);
+    } catch (err) {
+      throw new Error("Failed to parse keyword JSON.");
+    }
 
     return {
       statusCode: 200,
       body: JSON.stringify({
-        description: descriptionText,
-        shortTailKeywords: parsed.shortTailKeywords || [],
-        longTailKeywords: parsed.longTailKeywords || []
-      }),
+        description,
+        shortTailKeywords: parsedKeywords.shortTailKeywords,
+        longTailKeywords: parsedKeywords.longTailKeywords
+      })
     };
 
   } catch (error) {
+    console.error("Server error:", error);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: error.message }),
+      body: JSON.stringify({ error: error.message || "Unknown server error" })
     };
   }
 };
