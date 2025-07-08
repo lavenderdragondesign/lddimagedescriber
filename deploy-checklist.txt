@@ -1,0 +1,9 @@
+✅ Push your project to GitHub
+✅ Go to https://app.netlify.com → Add new site → Import from GitHub
+✅ Select your repo
+✅ Set Build Command = npm run build
+✅ Set Publish Directory = dist
+✅ Under Environment Variables, add:
+   - VITE_GEMINI_API_KEY = your Gemini key
+✅ Click Deploy
+🎉 Done!
