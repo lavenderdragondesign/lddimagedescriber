@@ -73,6 +73,14 @@ function App() {
     }
   };
 
+  const getApiKey = () => {
+    return (
+      import.meta.env.GEMINI_API_KEY ||
+      (typeof window !== 'undefined' && window._env_ && window._env_.GEMINI_API_KEY) ||
+      ''
+    );
+  };
+
   const analyzeImageAndGenerateKeywords = async () => {
     setIsLoading(true);
     setErrorMessage('');
@@ -88,6 +96,11 @@ function App() {
     }
 
     try {
+      const apiKey = getApiKey();
+      if (!apiKey || typeof apiKey !== 'string' || !apiKey.trim()) {
+        throw new Error('API key is missing or invalid.');
+      }
+
       let descriptionPrompt;
       switch (selectedBackgroundColor) {
         case 'black':
@@ -119,9 +132,6 @@ function App() {
           }
         ]
       };
-
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-      if (!apiKey) throw new Error('API key is missing.');
 
       const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
@@ -197,7 +207,7 @@ function App() {
   return (
     <div className="min-h-screen p-4 bg-gray-100 font-sans">
       <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-6">
-        <h1 className="text-2xl font-bold mb-4">LavenderDragonDesign's Image Describer & SEO Keywords For Etsy/POD</h1>
+        <h1 className="text-2xl font-bold mb-4">Image Describer</h1>
         <input type="file" onChange={handleImageChange} className="mb-4" />
 
         {selectedImage && (
