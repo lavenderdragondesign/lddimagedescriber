@@ -133,7 +133,7 @@ function App() {
         )}
 
         <div className="mb-4">
-          <label className="block font-medium mb-1">Select Product Types:</label>
+          <label className="block font-medium mb-1">Select Product Types (optional for Keywords):</label>
           {productTypes.map((type) => (
             <label key={type} className="inline-flex items-center mr-4">
               <input
