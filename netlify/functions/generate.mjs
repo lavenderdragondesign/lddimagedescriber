@@ -121,8 +121,7 @@ ${productHint}
 
     const keywordsJson = await keywordsRes.json();
     const rawText = keywordsJson?.candidates?.[0]?.content?.parts?.[0]?.text;
-    console.log("🧠 Raw keyword text from Gemini:
-", rawText);
+    console.log("🧠 Raw keyword text from Gemini:", rawText);
 
     let keywords = {
       shortTailKeywords: [],
@@ -131,7 +130,11 @@ ${productHint}
     };
 
     try {
-      const parsed = JSON.parse(rawText);
+      const cleanText = rawText
+        .replace(/```json/i, '')
+        .replace(/```/, '')
+        .trim();
+      const parsed = JSON.parse(cleanText);
       keywords.shortTailKeywords = parsed.shortTailKeywords || [];
       keywords.longTailKeywords = parsed.longTailKeywords || [];
     } catch (err) {
