@@ -1,16 +1,6 @@
 // App.jsx
 import React, { useState } from 'react';
-import {
-  Copy,
-  Check,
-  Upload,
-  Image as ImageIcon,
-  Settings,
-  Sparkles,
-  FileText,
-  Tag,
-  Coffee,
-} from 'lucide-react';
+import { Copy, Check, Image as ImageIcon, Sparkles, X } from 'lucide-react';
 
 function App() {
   const [selectedImage, setSelectedImage] = useState(null);
@@ -22,23 +12,23 @@ function App() {
   const [errorMessage, setErrorMessage] = useState('');
   const [selectedProductTypes, setSelectedProductTypes] = useState([]);
   const [selectedBackgroundColor, setSelectedBackgroundColor] = useState('auto-detect');
-
   const [copiedDescription, setCopiedDescription] = useState(false);
   const [copiedShortTail, setCopiedShortTail] = useState(false);
   const [copiedLongTail, setCopiedLongTail] = useState(false);
-  const [showPopup, setShowPopup] = useState(false);
-  const [rawResponse, setRawResponse] = useState("");
+  const [popupVisible, setPopupVisible] = useState(false);
+  const [rawResponse, setRawResponse] = useState('');
 
   const productTypes = ['shirt', 'mug', 'tumbler', 'png', 'svg'];
 
   const handleImageChange = (event) => {
     const file = event.target.files[0];
-    if (file) {
+    if (file && file.size <= 3 * 1024 * 1024) {
       setSelectedImage(file);
       setErrorMessage('');
       setImageDescription('');
       setShortTailKeywords([]);
       setLongTailKeywords([]);
+      setRawResponse('');
       setSelectedProductTypes([]);
       setSelectedBackgroundColor('auto-detect');
 
@@ -51,14 +41,15 @@ function App() {
       };
       reader.readAsDataURL(file);
     } else {
+      setErrorMessage('Please upload an image under 3MB.');
       setSelectedImage(null);
       setBase64Image('');
     }
   };
 
   const handleProductTypeChange = (type) => {
-    setSelectedProductTypes((prevTypes) =>
-      prevTypes.includes(type) ? prevTypes.filter((t) => t !== type) : [...prevTypes, type]
+    setSelectedProductTypes((prev) =>
+      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
     );
   };
 
@@ -66,21 +57,10 @@ function App() {
     setSelectedBackgroundColor(event.target.value);
   };
 
-  const handleCopy = (textToCopy, setCopiedState) => {
-    try {
-      const textarea = document.createElement('textarea');
-      textarea.value = textToCopy;
-      textarea.style.position = 'fixed';
-      textarea.style.opacity = '0';
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textarea);
-      setCopiedState(true);
-      setTimeout(() => setCopiedState(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy text: ', err);
-    }
+  const handleCopy = (text, setCopied) => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const analyzeImageAndGenerateKeywords = async () => {
@@ -89,6 +69,7 @@ function App() {
     setImageDescription('');
     setShortTailKeywords([]);
     setLongTailKeywords([]);
+    setRawResponse('');
 
     if (!base64Image) {
       setErrorMessage('Please upload an image first.');
@@ -108,26 +89,22 @@ function App() {
         }),
       });
 
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`API Error ${res.status}: ${text}`);
-      }
-
       const result = await res.json();
-      if (!result.description && (!result.shortTailKeywords || result.shortTailKeywords.length === 0) && (!result.longTailKeywords || result.longTailKeywords.length === 0)) {
-        setErrorMessage("AI responded, but didn’t return any usable info. Try another image or refresh.");
-        return;
+
+      if (result.description || result.shortTailKeywords || result.longTailKeywords) {
+        setImageDescription(result.description || '');
+        setShortTailKeywords(result.shortTailKeywords || []);
+        setLongTailKeywords(result.longTailKeywords || []);
+        setPopupVisible(true);
+      } else if (result.rawGeminiOutput) {
+        setRawResponse(result.rawGeminiOutput);
+        setPopupVisible(true);
+      } else {
+        setErrorMessage('AI responded, but didn’t return any usable info. Try another image or refresh.');
       }
-    
-      setImageDescription(result.description);
-      setRawResponse(result.rawResponse || "");
-      setShowPopup(true);
-      setShowPopup(true);
-      setShortTailKeywords(result.shortTailKeywords || []);
-      setLongTailKeywords(result.longTailKeywords || []);
-    } catch (error) {
-      console.error('Error:', error);
-      setErrorMessage(`Failed: ${error.message}`);
+    } catch (err) {
+      console.error(err);
+      setErrorMessage(`Failed: ${err.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -138,29 +115,13 @@ function App() {
       <div className="flex justify-center mb-4">
         <img src="/logo.jpg" alt="Logo" className="h-16" />
       </div>
-      <p className="text-center text-red-600 font-semibold font-2xl mb-4">
-        This App is in Beta. Expect Crashes, Bugs, and Possible Incorrect Descriptions.
-        If errors occur, refresh the page or wait a few minutes due to high usage.
+
+      <p className="text-center text-red-600 font-semibold mb-4">
+        This App is in Beta. Expect Crashes, Bugs, and Possible Incorrect Descriptions. If errors occur, refresh the page or wait a few minutes due to high usage.
       </p>
 
-      
-<div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-6 relative">
-  <button
-    onClick={() => setShowPopup(false)}
-    className="absolute top-2 right-2"
-    aria-label="Close popup"
-  >
-    <img src="/x-icon.png" alt="Close" className="h-5 w-5" />
-  </button>
-        <h1 className="text-4xl font-bold mb-4 flex items-center gap-2">
-          <Sparkles size={20} />
-          LavenderDragonDesign's Image Describer and Keyword Generator
-        </h1>
-
-        <label className="flex items-center gap-2 font-3xl mb-2">
-          <Upload size={20} />
-          Upload Image:
-        </label>
+      <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-6">
+        <h1 className="text-2xl font-bold mb-4">LavenderDragonDesign's Image Describer and Keyword Generator</h1>
         <input type="file" onChange={handleImageChange} className="mb-4" />
 
         {selectedImage && (
@@ -173,10 +134,7 @@ function App() {
         )}
 
         <div className="mb-4">
-          <label className="block font-2xl mb-1 flex items-center gap-2">
-            <Tag size={20} />
-            Select Product Types (Optional - For Keywords):
-          </label>
+          <label className="block font-medium mb-1">Select Product Types (optional for Keywords):</label>
           {productTypes.map((type) => (
             <label key={type} className="inline-flex items-center mr-4">
               <input
@@ -190,10 +148,7 @@ function App() {
         </div>
 
         <div className="mb-4">
-          <label className="block font-2xl mb-1 flex items-center gap-2">
-            <ImageIcon size={20} />
-            Background Color (Optional - For Description - Auto-Detect by Default):
-          </label>
+          <label className="block font-medium mb-1">Select Background Color:</label>
           {['auto-detect', 'black', 'white', 'transparent'].map((color) => (
             <label key={color} className="inline-flex items-center mr-4">
               <input
@@ -210,20 +165,28 @@ function App() {
         <button
           onClick={analyzeImageAndGenerateKeywords}
           disabled={isLoading}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold transition flex items-center justify-center gap-2"
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold transition"
         >
-          <Sparkles size={20} />
           {isLoading ? 'Processing...' : 'Analyze Image'}
         </button>
 
         {errorMessage && <p className="mt-4 text-red-600">{errorMessage}</p>}
+      </div>
 
-        {showPopup && (
-          <div className="mt-4">
+      {popupVisible && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-start pt-10 z-50">
+          <div className="bg-white rounded-lg shadow-lg max-w-2xl w-full p-6 relative">
+            <button
+              onClick={() => setPopupVisible(false)}
+              className="absolute top-2 right-2 text-gray-500 hover:text-black"
+            >
+              <img src="/x-icon.png" alt="Close" className="h-5 w-5" />
+            </button>
+
             {imageDescription && (
               <div className="mb-6">
                 <h2 className="font-bold mb-1 flex items-center gap-2">
-                  <FileText size={20} />
+                  <ImageIcon size={20} />
                   Description
                 </h2>
                 <div className="flex items-start gap-2">
@@ -238,11 +201,7 @@ function App() {
                     className="bg-gray-200 hover:bg-gray-300 p-2 rounded mt-1"
                     title="Copy Description"
                   >
-                    {copiedDescription ? (
-                      <Check className="text-green-600" size={16} />
-                    ) : (
-                      <Copy size={20} />
-                    )}
+                    {copiedDescription ? <Check className="text-green-600" size={16} /> : <Copy size={16} />}
                   </button>
                 </div>
               </div>
@@ -250,8 +209,8 @@ function App() {
 
             {shortTailKeywords.length > 0 && (
               <div className="mb-6">
-                <h2 className="font-bold font-xl mb-1 flex items-center gap-2">
-                  <Tag size={20} />
+                <h2 className="font-bold mb-1 flex items-center gap-2">
+                  <Sparkles size={20} />
                   Short-Tail Keywords
                 </h2>
                 <div className="flex items-center gap-2">
@@ -266,20 +225,16 @@ function App() {
                     className="bg-gray-200 hover:bg-gray-300 p-2 rounded"
                     title="Copy Short-Tail Keywords"
                   >
-                    {copiedShortTail ? (
-                      <Check className="text-green-600" size={20} />
-                    ) : (
-                      <Copy size={20} />
-                    )}
+                    {copiedShortTail ? <Check className="text-green-600" size={16} /> : <Copy size={16} />}
                   </button>
                 </div>
               </div>
             )}
 
-            {(longTailKeywords.length > 0 || rawResponse) && (
+            {longTailKeywords.length > 0 && (
               <div className="mb-6">
                 <h2 className="font-bold mb-1 flex items-center gap-2">
-                  <Tag size={20.} />
+                  <Sparkles size={20} />
                   Long-Tail Keywords
                 </h2>
                 <div className="flex items-center gap-2">
@@ -294,35 +249,36 @@ function App() {
                     className="bg-gray-200 hover:bg-gray-300 p-2 rounded"
                     title="Copy Long-Tail Keywords"
                   >
-                    {copiedLongTail ? (
-                      <Check className="text-green-600" size={20} />
-                    ) : (
-                      <Copy size={20} />
-                    )}
+                    {copiedLongTail ? <Check className="text-green-600" size={16} /> : <Copy size={16} />}
                   </button>
                 </div>
               </div>
             )}
-          </div>
-        )}
 
-        <div className="mt-6 text-center text-sm text-gray-500">
-          <div className="flex justify-center items-center gap-2 mb-1 text-gray-600">
-            <Coffee size={20} />
-            v 1.0 - Dev. By A. Kessler With Love
+            {rawResponse && (
+              <div className="mb-6">
+                <h2 className="font-bold mb-1 flex items-center gap-2">
+                  <Sparkles size={20} />
+                  Raw Gemini Output
+                </h2>
+                <textarea
+                  readOnly
+                  className="w-full border rounded p-2 bg-yellow-50 text-sm resize-none"
+                  rows={6}
+                  value={rawResponse}
+                />
+              </div>
+            )}
           </div>
-          <a
-            href="https://www.buymeacoffee.com/lavenderdragondesigns"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <img
-              src="/yellow-button.png"
-              alt="Buy Me a Coffee"
-              className="mx-auto mt-2 h-12"
-            />
-          </a>
         </div>
+      )}
+
+      <div className="mt-6 text-center text-sm text-gray-500">
+        v 1.0 – Dev. By A. Kessler With Love
+        <br />
+        <a href="https://buymeacoffee.com/lavenderdragondesigns" target="_blank" rel="noopener noreferrer">
+          <img src="/yellow-button.png" alt="Buy Me a Coffee" className="mx-auto mt-2 h-12" />
+        </a>
       </div>
     </div>
   );
