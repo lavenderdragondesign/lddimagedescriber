@@ -8,7 +8,18 @@ export async function handler(event, context) {
 
     if (!imageBase64 || !mimeType) {
       console.error("❌ Missing required fields.");
-      return {
+      if (!parsed.description && (!parsed.shortTailKeywords || parsed.shortTailKeywords.length === 0) && (!parsed.longTailKeywords || parsed.longTailKeywords.length === 0)) {
+    console.warn("👻 Empty AI response. Returning fallback.");
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        description: "No valid content returned. Possibly AI goofed.",
+        shortTailKeywords: [],
+        longTailKeywords: []
+      })
+    };
+  }
+  return {
         statusCode: 400,
         body: JSON.stringify({ error: "Missing required fields: imageBase64 or mimeType." })
       };
