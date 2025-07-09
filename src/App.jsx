@@ -1,35 +1,51 @@
 // App.jsx
 import React, { useState } from 'react';
-import { Copy } from 'lucide-react';
+import { Copy } from 'lucide-react'; // Import Lucide Copy icon
 
+// Main App component
 function App() {
+  // State for the selected image file
   const [selectedImage, setSelectedImage] = useState(null);
+  // State for the Base64 representation of the image
   const [base64Image, setBase64Image] = useState('');
+  // State for the generated image description
   const [imageDescription, setImageDescription] = useState('');
+  // State for the generated short-tail keywords
   const [shortTailKeywords, setShortTailKeywords] = useState([]);
+  // State for the generated long-tail keywords
   const [longTailKeywords, setLongTailKeywords] = useState([]);
+  // State to manage loading indicator during API calls
   const [isLoading, setIsLoading] = useState(false);
+  // State for any error messages
   const [errorMessage, setErrorMessage] = useState('');
+  // State for copy confirmation message
   const [copyMessage, setCopyMessage] = useState('');
+  // State for selected product types
   const [selectedProductTypes, setSelectedProductTypes] = useState([]);
-  const [selectedBackgroundColor, setSelectedBackgroundColor] = useState('auto-detect');
+  // State for selected background color preference in description
+  const [selectedBackgroundColor, setSelectedBackgroundColor] = useState('auto-detect'); // 'auto-detect', 'black', 'white', 'transparent'
 
+  // Available product types for selection
   const productTypes = ['shirt', 'mug', 'tumbler', 'png', 'svg'];
 
+  // Handles image file selection and converts it to Base64
   const handleImageChange = (event) => {
     const file = event.target.files[0];
     if (file) {
       setSelectedImage(file);
-      setErrorMessage('');
+      setErrorMessage(''); // Clear previous errors
       setImageDescription('');
       setShortTailKeywords([]);
       setLongTailKeywords([]);
-      setCopyMessage('');
-      setSelectedProductTypes([]);
-      setSelectedBackgroundColor('auto-detect');
+      setCopyMessage(''); // Clear copy message
+      setSelectedProductTypes([]); // Clear product types on new image
+      setSelectedBackgroundColor('auto-detect'); // Reset background color selection
 
       const reader = new FileReader();
-      reader.onloadend = () => setBase64Image(reader.result.split(',')[1]);
+      reader.onloadend = () => {
+        // Store the Base64 string (remove the data:image/...;base64, prefix)
+        setBase64Image(reader.result.split(',')[1]);
+      };
       reader.onerror = () => {
         setErrorMessage('Failed to read image file.');
         setBase64Image('');
@@ -42,6 +58,7 @@ function App() {
     }
   };
 
+  // Handles product type checkbox changes
   const handleProductTypeChange = (type) => {
     setSelectedProductTypes((prevTypes) =>
       prevTypes.includes(type)
@@ -50,22 +67,26 @@ function App() {
     );
   };
 
+  // Handles background color radio button changes
   const handleBackgroundColorChange = (event) => {
     setSelectedBackgroundColor(event.target.value);
   };
 
+  // Function to copy text to clipboard
   const handleCopy = (textToCopy) => {
     try {
+      // Use a temporary textarea to copy text to clipboard
       const textarea = document.createElement('textarea');
       textarea.value = textToCopy;
-      textarea.style.position = 'fixed';
-      textarea.style.opacity = '0';
+      textarea.style.position = 'fixed'; // Avoid scrolling to bottom
+      textarea.style.opacity = '0'; // Hide it
       document.body.appendChild(textarea);
       textarea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textarea);
+      document.execCommand('copy'); // Execute copy command
+      document.body.removeChild(textarea); // Remove the textarea
+
       setCopyMessage('Copied!');
-      setTimeout(() => setCopyMessage(''), 2000);
+      setTimeout(() => setCopyMessage(''), 2000); // Clear message after 2 seconds
     } catch (err) {
       console.error('Failed to copy text: ', err);
       setCopyMessage('Failed to copy!');
@@ -73,14 +94,7 @@ function App() {
     }
   };
 
-  const getApiKey = () => {
-    return (
-      import.meta.env.GEMINI_API_KEY ||
-      (typeof window !== 'undefined' && window._env_ && window._env_.GEMINI_API_KEY) ||
-      ''
-    );
-  };
-
+  // Function to call Gemini API for image description and keyword generation
   const analyzeImageAndGenerateKeywords = async () => {
     setIsLoading(true);
     setErrorMessage('');
@@ -96,30 +110,24 @@ function App() {
     }
 
     try {
-      const apiKey = getApiKey();
-      if (!apiKey || typeof apiKey !== 'string' || !apiKey.trim()) {
-        throw new Error('API key is missing or invalid.');
-      }
-
+      // 1. Get Image Description from Gemini (now aiming for ~60 words)
       let descriptionPrompt;
-      switch (selectedBackgroundColor) {
-        case 'black':
-          descriptionPrompt = 'Provide a detailed description with black background.';
-          break;
-        case 'white':
-          descriptionPrompt = 'Provide a detailed description with white background.';
-          break;
-        case 'transparent':
-          descriptionPrompt = 'Provide a detailed description with transparent background.';
-          break;
-        default:
-          descriptionPrompt = 'Auto-detect background and provide description.';
+
+      if (selectedBackgroundColor === 'black') {
+        descriptionPrompt = "Provide a comprehensive and detailed description of this image, highlighting its main subject, prominent objects, their relative positions, dominant colors, any discernible text, and specifically mention that the background is black. Describe the overall artistic style or mood. Aim for approximately 60 words for product listings.";
+      } else if (selectedBackgroundColor === 'white') {
+        descriptionPrompt = "Provide a comprehensive and detailed description of this image, highlighting its main subject, prominent objects, their relative positions, dominant colors, any discernible text, and specifically mention that the background is white. Describe the overall artistic style or mood. Aim for approximately 60 words for product listings.";
+      } else if (selectedBackgroundColor === 'transparent') {
+        descriptionPrompt = "Provide a comprehensive and detailed description of this image, highlighting its main subject, prominent objects, their relative positions, dominant colors, any discernible text, and specifically mention that the background is transparent. Describe the overall artistic style or mood. Aim for approximately 60 words for product listings.";
+      }
+      else { // 'auto-detect' - refined prompt for better background detection
+        descriptionPrompt = "Provide a comprehensive and detailed description of this image. Identify the *dominant background color* first, then cover its main subject, prominent objects, their relative positions, dominant colors, any discernible text, and overall artistic style or mood. Aim for approximately 60 words for product listings.";
       }
 
       const descriptionPayload = {
         contents: [
           {
-            role: 'user',
+            role: "user",
             parts: [
               { text: descriptionPrompt },
               {
@@ -130,9 +138,10 @@ function App() {
               }
             ]
           }
-        ]
+        ],
       };
 
+      const apiKey = ""; // API key is automatically provided by Canvas
       const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
       const descriptionResponse = await fetch(apiUrl, {
@@ -141,35 +150,45 @@ function App() {
         body: JSON.stringify(descriptionPayload)
       });
 
-      if (!descriptionResponse.ok) throw new Error(`API error: ${descriptionResponse.status}`);
-      const descriptionResult = await descriptionResponse.json();
-      const generatedDescription = descriptionResult?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
-      if (!generatedDescription.trim()) {
-        throw new Error('No image description returned by API.');
+      if (!descriptionResponse.ok) {
+        const errorData = await descriptionResponse.json();
+        throw new Error(`Description API error: ${response.status} - ${errorData.error.message || 'Unknown error'}`);
       }
 
-      setImageDescription(generatedDescription);
+      const descriptionResult = await descriptionResponse.json();
+      let generatedDescription = '';
+      if (descriptionResult.candidates && descriptionResult.candidates.length > 0 &&
+          descriptionResult.candidates[0].content && descriptionResult.candidates[0].content.parts &&
+          descriptionResult.candidates[0].content.parts.length > 0) {
+        generatedDescription = descriptionResult.candidates[0].content.parts[0].text;
+        setImageDescription(generatedDescription);
+      } else {
+        setErrorMessage('Could not get image description. Unexpected API response structure.');
+      }
 
-      const productHint = selectedProductTypes.length
-        ? `Include: ${selectedProductTypes.join(', ')}.`
+      // 2. Generate SEO Keywords based on the description and selected product types
+      const productTypeHint = selectedProductTypes.length > 0
+        ? ` Consider these product types for the keywords: ${selectedProductTypes.join(', ')}.`
         : '';
 
-      const keywordsPrompt = `Generate short-tail and long-tail keywords from this description. ${productHint} Return JSON.`;
+      const keywordsPrompt = `Based on the following image description, generate a list of 6-7 short-tail SEO keywords and 6-7 long-tail SEO keywords suitable for product listings on platforms like Etsy or Print-on-Demand. Focus on terms that a customer would search for.${productTypeHint} Provide the output as a JSON object with two arrays: "shortTailKeywords" and "longTailKeywords".
+      Image Description: "${generatedDescription}"`;
+
       const keywordsPayload = {
-        contents: [
-          {
-            role: 'user',
-            parts: [{ text: `${keywordsPrompt}\nDescription: ${generatedDescription}` }]
-          }
-        ],
+        contents: [{ role: "user", parts: [{ text: keywordsPrompt }] }],
         generationConfig: {
-          responseMimeType: 'application/json',
+          responseMimeType: "application/json",
           responseSchema: {
-            type: 'OBJECT',
+            type: "OBJECT",
             properties: {
-              shortTailKeywords: { type: 'ARRAY', items: { type: 'STRING' } },
-              longTailKeywords: { type: 'ARRAY', items: { type: 'STRING' } }
+              shortTailKeywords: {
+                type: "ARRAY",
+                items: { type: "STRING" }
+              },
+              longTailKeywords: {
+                type: "ARRAY",
+                items: { type: "STRING" }
+              }
             }
           }
         }
@@ -181,110 +200,272 @@ function App() {
         body: JSON.stringify(keywordsPayload)
       });
 
-      if (!keywordsResponse.ok) throw new Error(`API error: ${keywordsResponse.status}`);
+      // --- DEBUGGING KEYWORDS START ---
+      console.log('Keywords API Raw Response:', keywordsResponse); // Log the raw response object
+      if (!keywordsResponse.ok) {
+        const errorData = await keywordsResponse.json();
+        console.error('Keywords API Error Data:', errorData); // Log error details
+        throw new Error(`Keywords API error: ${keywordsResponse.status} - ${errorData.error.message || 'Unknown error'}`);
+      }
       const keywordsResult = await keywordsResponse.json();
-      const jsonString = keywordsResult?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      console.log('Keywords API Parsed Result:', keywordsResult); // Log the parsed JSON result
 
-      if (!jsonString.trim()) {
-        throw new Error('No keywords returned by API.');
+      if (keywordsResult.candidates && keywordsResult.candidates.length > 0 &&
+          keywordsResult.candidates[0].content && keywordsResult.candidates[0].content.parts &&
+          keywordsResult.candidates[0].content.parts.length > 0) {
+        const jsonString = keywordsResult.candidates[0].content.parts[0].text;
+        console.log('JSON String from API for Keywords:', jsonString); // Log the string before parsing
+        try {
+          const parsedJson = JSON.parse(jsonString);
+          console.log('Parsed JSON Object for Keywords:', parsedJson); // Log the parsed object
+          setShortTailKeywords(parsedJson.shortTailKeywords || []);
+          setLongTailKeywords(parsedJson.longTailKeywords || []);
+        } catch (parseError) {
+          console.error('Error parsing keywords JSON:', parseError);
+          setErrorMessage(`Failed to parse keywords: ${parseError.message}. Raw JSON: ${jsonString}`);
+        }
+      } else {
+        setErrorMessage('Could not generate keywords. Unexpected API response structure or empty content.');
       }
+      // --- DEBUGGING KEYWORDS END ---
 
-      try {
-        const parsed = JSON.parse(jsonString);
-        setShortTailKeywords(parsed.shortTailKeywords || []);
-        setLongTailKeywords(parsed.longTailKeywords || []);
-      } catch (parseError) {
-        throw new Error(`Failed to parse keywords: ${parseError.message}`);
-      }
     } catch (error) {
-      console.error('Error:', error);
-      setErrorMessage(`Failed: ${error.message}`);
+      console.error('Overall Error in image analysis or keyword generation:', error);
+      setErrorMessage(`Failed to process: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen p-4 bg-gray-100 font-sans">
-      <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-6">
-        <h1 className="text-2xl font-bold mb-4">Image Describer</h1>
-        <input type="file" onChange={handleImageChange} className="mb-4" />
+    // Main container with full height, centered content, and a background
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-purple-300 to-indigo-400 p-4">
 
+      {/* Image Describer & SEO Keyword Generator Section */}
+      <div className="bg-white p-8 rounded-xl shadow-2xl max-w-md w-full">
+        <h1 className="text-3xl font-extrabold text-gray-900 mb-2 text-center animate-fade-in">
+          LavenderDragonDesign's Image Describer 📸
+        </h1>
+        {/* Subheader for beta status */}
+        <p className="text-sm text-red-600 mb-4 text-center font-medium">
+          This app is in beta. Expect Bugs, Crashes & Sometimes Incorrect Descriptions.
+        </p>
+        <p className="text-md text-gray-700 mb-6 text-center animate-slide-up">
+          Upload an image to get a concise description and SEO-friendly keywords for your POD/Etsy products!
+        </p>
+
+        {/* Image Upload Input */}
+        <input
+          type="file"
+          accept="image/png, image/jpeg, image/webp"
+          onChange={handleImageChange}
+          className="w-full text-gray-700 mb-4 p-2 border border-gray-300 rounded-lg"
+        />
+
+        {/* Image Preview */}
         {selectedImage && (
-          <img
-            src={URL.createObjectURL(selectedImage)}
-            alt="Preview"
-            className="mb-4 max-w-full rounded border"
-            style={{ maxHeight: '300px' }}
-          />
+          <div className="mb-4 text-center">
+            <img
+              src={URL.createObjectURL(selectedImage)}
+              alt="Selected Preview"
+              className="max-w-full h-auto rounded-lg shadow-md mx-auto"
+              style={{ maxHeight: '200px' }}
+            />
+            <p className="text-sm text-gray-500 mt-2">Image Preview</p>
+          </div>
         )}
 
-        <div className="mb-4">
-          <label className="block font-medium mb-1">Select Product Types:</label>
-          {productTypes.map((type) => (
-            <label key={type} className="inline-flex items-center mr-4">
-              <input
-                type="checkbox"
-                checked={selectedProductTypes.includes(type)}
-                onChange={() => handleProductTypeChange(type)}
-              />
-              <span className="ml-1 capitalize">{type}</span>
-            </label>
-          ))}
+        {/* Product Type Tags Selection */}
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-2">Select Product Types (Optional):</h3>
+          <div className="flex flex-wrap gap-2">
+            {productTypes.map((type) => (
+              <label
+                key={type}
+                className={`flex items-center px-3 py-1 rounded-full border cursor-pointer transition-colors duration-200
+                  ${selectedProductTypes.includes(type)
+                    ? 'bg-blue-100 border-blue-500 text-blue-700'
+                    : 'bg-gray-100 border-gray-300 text-gray-600 hover:bg-gray-200'
+                  }`}
+              >
+                <input
+                  type="checkbox"
+                  value={type}
+                  checked={selectedProductTypes.includes(type)}
+                  onChange={() => handleProductTypeChange(type)}
+                  className="mr-2 h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
+                />
+                {type.charAt(0).toUpperCase() + type.slice(1)}
+              </label>
+            ))}
+          </div>
         </div>
 
-        <div className="mb-4">
-          <label className="block font-medium mb-1">Select Background Color:</label>
-          {['auto-detect', 'black', 'white', 'transparent'].map((color) => (
-            <label key={color} className="inline-flex items-center mr-4">
+        {/* Background Color in Description Selection */}
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-2">Mention Image Background Color:</h3>
+          <div className="flex flex-wrap gap-4 justify-center">
+            <label className="flex items-center cursor-pointer">
               <input
                 type="radio"
-                value={color}
-                checked={selectedBackgroundColor === color}
+                name="background-color"
+                value="auto-detect"
+                checked={selectedBackgroundColor === 'auto-detect'}
                 onChange={handleBackgroundColorChange}
+                className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500"
               />
-              <span className="ml-1 capitalize">{color}</span>
+              <span className="text-gray-700">Auto-detect</span>
             </label>
-          ))}
+            <label className="flex items-center cursor-pointer">
+              <input
+                type="radio"
+                name="background-color"
+                value="black"
+                checked={selectedBackgroundColor === 'black'}
+                onChange={handleBackgroundColorChange}
+                className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-gray-700">Black</span>
+            </label>
+            <label className="flex items-center cursor-pointer">
+              <input
+                type="radio"
+                name="background-color"
+                value="white"
+                checked={selectedBackgroundColor === 'white'}
+                onChange={handleBackgroundColorChange}
+                className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-gray-700">White</span>
+            </label>
+            <label className="flex items-center cursor-pointer">
+              <input
+                type="radio"
+                name="background-color"
+                value="transparent"
+                checked={selectedBackgroundColor === 'transparent'}
+                onChange={handleBackgroundColorChange}
+                className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-gray-700">Transparent</span>
+            </label>
+          </div>
         </div>
 
+        {/* Analyze Button */}
         <button
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-full transition duration-300 ease-in-out transform hover:scale-105 shadow-lg flex items-center justify-center"
           onClick={analyzeImageAndGenerateKeywords}
-          disabled={isLoading}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold transition"
+          disabled={isLoading || !selectedImage} // Disable button when loading or no image selected
         >
-          {isLoading ? 'Processing...' : 'Analyze Image'}
+          {isLoading ? (
+            <svg className="animate-spin h-5 w-5 mr-3 text-white" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          ) : (
+            'Analyze Image & Generate Keywords ✨'
+          )}
         </button>
 
-        {errorMessage && <p className="mt-4 text-red-600">{errorMessage}</p>}
-
-        {imageDescription && (
-          <div className="mt-4">
-            <h2 className="font-bold">Description</h2>
-            <p className="text-gray-800 whitespace-pre-wrap">{imageDescription}</p>
-          </div>
+        {errorMessage && (
+          <p className="text-red-600 mt-4 text-center">{errorMessage}</p>
         )}
 
-        {(shortTailKeywords.length > 0 || longTailKeywords.length > 0) && (
-          <div className="mt-4">
-            <h2 className="font-bold mb-2">Keywords</h2>
-            <div className="mb-2">
-              <strong>Short-Tail:</strong>
-              <ul className="list-disc list-inside">
-                {shortTailKeywords.map((k, i) => <li key={i}>{k}</li>)}
-              </ul>
-            </div>
-            <div>
-              <strong>Long-Tail:</strong>
-              <ul className="list-disc list-inside">
-                {longTailKeywords.map((k, i) => <li key={i}>{k}</li>)}
-              </ul>
-            </div>
-          </div>
+        {copyMessage && (
+          <p className="text-green-600 mt-2 text-center text-sm">{copyMessage}</p>
         )}
 
-        {copyMessage && <p className="mt-2 text-green-600">{copyMessage}</p>}
+        {/* Results Display */}
+        {(imageDescription || shortTailKeywords.length > 0 || longTailKeywords.length > 0) && (
+          <div className="mt-6 p-4 bg-gray-100 rounded-lg border border-gray-200">
+            {imageDescription && (
+              <div className="mb-4">
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="text-xl font-semibold text-gray-800">Image Description:</h3>
+                  <button
+                    onClick={() => handleCopy(imageDescription)}
+                    className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 transition-colors duration-200"
+                    title="Copy description"
+                  >
+                    <Copy size={18} className="text-gray-600" />
+                  </button>
+                </div>
+                <p className="text-gray-700 whitespace-pre-wrap">{imageDescription}</p>
+              </div>
+            )}
+
+            {shortTailKeywords.length > 0 && (
+              <div className="mb-4">
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="text-xl font-semibold text-gray-800">Short-Tail Keywords:</h3>
+                  <button
+                    onClick={() => handleCopy(shortTailKeywords.join(', '))}
+                    className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 transition-colors duration-200"
+                    title="Copy short-tail keywords"
+                  >
+                    <Copy size={18} className="text-gray-600" />
+                  </button>
+                </div>
+                <ul className="list-disc list-inside text-gray-700">
+                  {shortTailKeywords.map((keyword, index) => (
+                    <li key={index}>{keyword}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {longTailKeywords.length > 0 && (
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="text-xl font-semibold text-gray-800">Long-Tail Keywords:</h3>
+                  <button
+                    onClick={() => handleCopy(longTailKeywords.join(', '))}
+                    className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 transition-colors duration-200"
+                    title="Copy long-tail keywords"
+                  >
+                    <Copy size={18} className="text-gray-600" />
+                  </button>
+                </div>
+                <ul className="list-disc list-inside text-gray-700">
+                  {longTailKeywords.map((keyword, index) => (
+                    <li key={index}>{keyword}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Tailwind CSS JIT (Just-In-Time) compilation script */}
+      <script src="https://cdn.tailwindcss.com"></script>
+      <style>
+        {/* Custom CSS for animations */}
+        {`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        .animate-fade-in {
+          animation: fadeIn 1s ease-out;
+        }
+
+        @keyframes slideUp {
+          from { transform: translateY(20px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+        .animate-slide-up {
+          animation: slideUp 0.8s ease-out 0.3s forwards;
+          opacity: 0; /* Start hidden */
+        }
+
+        /* Ensure Inter font is used */
+        body {
+          font-family: 'Inter', sans-serif;
+        }
+        `}
+      </style>
     </div>
   );
 }
