@@ -18,19 +18,17 @@ export async function handler(event) {
     }
 
     const prompt = `
-You are a professional Etsy seller assistant. Given an image of a product, generate:
-1. A clear, compelling Etsy-style product description
-2. 5 short-tail keywords (popular search terms)
-3. 5 long-tail keywords (more specific, detailed search terms)
+You are an API. Return ONLY valid compact JSON, no explanation.
+Generate a clear Etsy-style product description and 5 short-tail and 5 long-tail keywords.
 
-Return only a JSON object in this format:
+Example output:
 {
   "description": "...",
-  "shortTailKeywords": [...],
-  "longTailKeywords": [...]
+  "shortTailKeywords": ["...", "...", "...", "...", "..."],
+  "longTailKeywords": ["...", "...", "...", "...", "..."]
 }
 
-Image and details:
+Image description info:
 - Product types: ${productTypes.join(', ') || 'unspecified'}
 - Background: ${backgroundColor}
 `;
@@ -59,18 +57,23 @@ Image and details:
     );
 
     const geminiData = await geminiRes.json();
-    const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    console.log("🧠 Raw Gemini response:", rawText);
+    const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    console.log("🧠 Raw Gemini response:", text);
 
-    // Clean common preambles like "Sure! Here's your result:"
-    const trimmed = rawText.replace(/^[^\{]*?\{/, '{').replace(/\}[\s\S]*$/, '}');
+    // Try to extract just the JSON
+    const firstBrace = text.indexOf('{');
+    const lastBrace = text.lastIndexOf('}');
+    if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+      throw new Error("Could not extract valid JSON from Gemini response.");
+    }
 
+    const jsonString = text.slice(firstBrace, lastBrace + 1);
     let parsed;
     try {
-      parsed = JSON.parse(trimmed);
+      parsed = JSON.parse(jsonString);
     } catch (err) {
       console.error("❌ JSON parse error:", err);
-      throw new Error("Failed to extract valid JSON from Gemini response.");
+      throw new Error("Failed to parse extracted Gemini JSON.");
     }
 
     return {
