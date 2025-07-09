@@ -1,5 +1,7 @@
 import fetch from 'node-fetch';
 
+const hfToken = process.env.HUGGINGFACE_API_KEY;
+
 export async function handler(event) {
   try {
     const body = JSON.parse(event.body || '{}');
@@ -17,7 +19,7 @@ export async function handler(event) {
     const captionResponse = await fetch('https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-base', {
       method: 'POST',
       headers: {
-        'Authorization': 'Bearer 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',
+        'Authorization': `Bearer ${hfToken}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({ inputs: base64Image })
@@ -30,7 +32,7 @@ export async function handler(event) {
     const textGenResponse = await fetch('https://api-inference.huggingface.co/models/mistralai/Mixtral-8x7B-Instruct-v0.1', {
       method: 'POST',
       headers: {
-        'Authorization': 'Bearer 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',
+        'Authorization': `Bearer ${hfToken}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
@@ -42,11 +44,11 @@ export async function handler(event) {
     const description = textGenResult[0]?.generated_text?.replace(/^.*?: /, '') || caption;
 
     // Step 3: Keyword extraction from final description
-    const keywordPrompt = "Extract 13 Etsy-style keywords from this product description, in comma-separated format:\n" + description;
+    const keywordPrompt = "Extract 10 Etsy-style keywords from this product description, in comma-separated format:\n" + description;
     const keywordResponse = await fetch('https://api-inference.huggingface.co/models/mistralai/Mixtral-8x7B-Instruct-v0.1', {
       method: 'POST',
       headers: {
-        'Authorization': 'Bearer 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',
+        'Authorization': `Bearer ${hfToken}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
