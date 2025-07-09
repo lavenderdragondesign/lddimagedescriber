@@ -121,6 +121,7 @@ function App() {
       <p className="text-center text-red-600 font-semibold mb-4">
         This App is in Beta. Expect Crashes, Bugs, and Possible Incorrect Descriptions. If errors occur, refresh the page or wait a few minutes due to high usage.
       </p>
+
       <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-6">
         <h1 className="text-2xl font-bold mb-4">LavenderDragonDesign's Image Describer and Keyword Generator</h1>
         <input type="file" onChange={handleImageChange} className="mb-4" />
@@ -250,6 +251,8 @@ function App() {
               </div>
             )}
           </div>
+        )}
+
         <div className="mt-6 text-center text-sm text-gray-500">
           v 1.0 - Dev. By A. Kessler With Love,<br />
           <a
@@ -264,7 +267,9 @@ function App() {
             />
           </a>
         </div>
-      );
+      </div>
+    </div>
+  );
 }
 
 export default App;
