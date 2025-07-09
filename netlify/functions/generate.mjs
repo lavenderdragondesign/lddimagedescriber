@@ -1,101 +1,157 @@
 import fetch from 'node-fetch';
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-
-export async function handler(event) {
+export async function handler(event, context) {
   try {
     const body = JSON.parse(event.body || '{}');
-    const base64Image = body.imageBase64;
-    const mimeType = body.mimeType || 'image/jpeg';
-    const backgroundColor = body.backgroundColor || 'auto-detect';
-    const productTypes = body.productTypes || [];
+    console.log("🔍 Request received:", JSON.stringify(body, null, 2));
 
-    if (!base64Image) {
+    const { imageBase64, mimeType, backgroundColor, productTypes } = body;
+
+    if (!imageBase64 || !mimeType) {
       return {
         statusCode: 400,
-        body: JSON.stringify({ error: 'Missing image data' }),
+        body: JSON.stringify({ error: "Missing required fields: imageBase64 or mimeType" }),
       };
     }
 
-    const prompt = `
-Please look at the image and respond with only a JSON object containing the fields:
-"description", "shortTailKeywords", and "longTailKeywords".
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      console.error("❌ GEMINI_API_KEY is missing from environment variables.");
+      return {
+        statusCode: 500,
+        body: JSON.stringify({ error: "GEMINI_API_KEY is missing." }),
+      };
+    }
 
-Example:
-<json>
-{
-  "description": "A cute Halloween ghost PNG clipart in kawaii style.",
-  "shortTailKeywords": ["ghost", "Halloween", "kawaii"],
-  "longTailKeywords": ["kawaii ghost clipart", "cute Halloween sticker", "pastel ghost PNG"]
-}
-</json>
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
-Do NOT include any extra text or explanation.
-`;
+    // Step 1: Build description prompt
+    let descriptionPrompt = 'Describe the image.';
+    switch (backgroundColor) {
+      case 'black':
+        descriptionPrompt += ' The background is black.';
+        break;
+      case 'white':
+        descriptionPrompt += ' The background is white.';
+        break;
+      case 'transparent':
+        descriptionPrompt += ' The background is transparent.';
+        break;
+      default:
+        descriptionPrompt += ' Include background and character details.';
+    }
 
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [
+    const descriptionPayload = {
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { text: descriptionPrompt },
             {
-              parts: [
-                { text: prompt },
-                {
-                  inlineData: {
-                    mimeType,
-                    data: base64Image,
-                  },
-                },
-              ],
-            },
-          ],
-        }),
-      }
-    );
+              inlineData: {
+                mimeType,
+                data: imageBase64
+              }
+            }
+          ]
+        }
+      ]
+    };
 
-    const geminiData = await geminiRes.json();
-    const fullText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    console.log("🧠 Gemini raw output:\n", fullText);
+    const descriptionRes = await fetch(apiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(descriptionPayload)
+    });
 
-    let jsonString;
-
-    // First try <json>...</json>
-    const tagMatch = fullText.match(/<json>([\s\S]*?)<\/json>/i);
-    if (tagMatch) {
-      jsonString = tagMatch[1].trim();
-    } else {
-      // Fallback: Try first {...} block
-      const fallbackMatch = fullText.match(/\{[\s\S]*?\}/);
-      jsonString = fallbackMatch?.[0]?.trim();
+    if (!descriptionRes.ok) {
+      const errorText = await descriptionRes.text();
+      console.error("❌ Description API failed:", errorText);
+      return {
+        statusCode: 500,
+        body: JSON.stringify({ error: `Description API error: ${descriptionRes.status} - ${errorText}` })
+      };
     }
 
-    if (!jsonString) {
-      throw new Error('Could not extract JSON from Gemini response.');
+    const descriptionJson = await descriptionRes.json();
+    const description = descriptionJson?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+
+    if (!description) {
+      return {
+        statusCode: 500,
+        body: JSON.stringify({ error: "No description returned from Gemini API." }),
+      };
     }
 
-    const parsed = JSON.parse(jsonString);
+    // Step 2: Get keyword suggestions
+    const productHint = productTypes?.length
+      ? ` Focus on these product types: ${productTypes.join(', ')}.`
+      : "";
+
+    const keywordPrompt = `
+Generate ONLY a valid JSON object with two properties:
+{
+  "shortTailKeywords": ["keyword1", "keyword2"],
+  "longTailKeywords": ["long phrase 1", "long phrase 2"]
+}
+No explanations. Only the JSON object.
+
+Description: ${description}
+${productHint}
+    `.trim();
+
+    const keywordsPayload = {
+      contents: [{ role: "user", parts: [{ text: keywordPrompt }] }]
+    };
+
+    const keywordsRes = await fetch(apiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(keywordsPayload)
+    });
+
+    if (!keywordsRes.ok) {
+      const errorText = await keywordsRes.text();
+      console.error("❌ Keywords API failed:", errorText);
+      return {
+        statusCode: 500,
+        body: JSON.stringify({ error: `Keywords API error: ${keywordsRes.status} - ${errorText}` })
+      };
+    }
+
+    const keywordsJson = await keywordsRes.json();
+    const rawText = keywordsJson?.candidates?.[0]?.content?.parts?.[0]?.text;
+    console.log("🧠 Raw keyword text from Gemini:
+", rawText);
+
+    let keywords = {
+      shortTailKeywords: [],
+      longTailKeywords: [],
+      rawResponse: rawText || "No text returned"
+    };
+
+    try {
+      const parsed = JSON.parse(rawText);
+      keywords.shortTailKeywords = parsed.shortTailKeywords || [];
+      keywords.longTailKeywords = parsed.longTailKeywords || [];
+    } catch (err) {
+      console.warn("⚠️ Failed to parse keyword JSON. Using raw fallback.");
+    }
 
     return {
       statusCode: 200,
       body: JSON.stringify({
-        description: parsed.description || '',
-        shortTailKeywords: parsed.shortTailKeywords || [],
-        longTailKeywords: parsed.longTailKeywords || [],
-        rawGeminiOutput: fullText,
-      }),
+        description,
+        shortTailKeywords: keywords.shortTailKeywords,
+        longTailKeywords: keywords.longTailKeywords,
+        rawResponse: keywords.rawResponse
+      })
     };
-  } catch (error) {
-    console.error('Gemini error:', error);
+  } catch (err) {
+    console.error("🔥 Unexpected server error:", err);
     return {
       statusCode: 500,
-      body: JSON.stringify({
-        error: error.message,
-        rawGeminiOutput: error.stack || '[No content]',
-      }),
+      body: JSON.stringify({ error: err.message || "Internal error occurred" })
     };
   }
-}
-
+};
