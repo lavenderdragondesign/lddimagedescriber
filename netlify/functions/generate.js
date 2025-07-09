@@ -23,7 +23,8 @@ exports.handler = async function (event, context) {
       };
     }
 
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent
+?key=${apiKey}`;
 
     // Choose description prompt
     let descriptionPrompt = '';
