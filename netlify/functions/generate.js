@@ -3,7 +3,7 @@ const fetch = require('node-fetch');
 exports.handler = async function (event, context) {
   try {
     const body = JSON.parse(event.body || '{}');
-    console.log("Request received:", body);
+    console.log("🔍 Request received:", JSON.stringify(body, null, 2));
 
     const { imageBase64, mimeType, backgroundColor, productTypes } = body;
 
@@ -16,7 +16,7 @@ exports.handler = async function (event, context) {
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      console.error("GEMINI_API_KEY is missing from environment variables.");
+      console.error("❌ GEMINI_API_KEY is missing from environment variables.");
       return {
         statusCode: 500,
         body: JSON.stringify({ error: "GEMINI_API_KEY is missing." }),
@@ -25,23 +25,22 @@ exports.handler = async function (event, context) {
 
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
-    // Choose description prompt
-    let descriptionPrompt = '';
+    // Step 1: Build description prompt
+    let descriptionPrompt = 'Describe the image.';
     switch (backgroundColor) {
       case 'black':
-        descriptionPrompt = "Describe the image with focus on a black background.";
+        descriptionPrompt += ' The background is black.';
         break;
       case 'white':
-        descriptionPrompt = "Describe the image with focus on a white background.";
+        descriptionPrompt += ' The background is white.';
         break;
       case 'transparent':
-        descriptionPrompt = "Describe the image with focus on a transparent background.";
+        descriptionPrompt += ' The background is transparent.';
         break;
       default:
-        descriptionPrompt = "Describe the image. Include background details.";
+        descriptionPrompt += ' Include background and character details.';
     }
 
-    // Step 1: Get image description
     const descriptionPayload = {
       contents: [
         {
@@ -66,17 +65,16 @@ exports.handler = async function (event, context) {
     });
 
     if (!descriptionRes.ok) {
-      const errorData = await descriptionRes.text();
-      console.error("Description API failed:", errorData);
+      const errorText = await descriptionRes.text();
+      console.error("❌ Description API failed:", errorText);
       return {
         statusCode: 500,
-        body: JSON.stringify({ error: `Description API error: ${descriptionRes.status} - ${errorData}` })
+        body: JSON.stringify({ error: `Description API error: ${descriptionRes.status} - ${errorText}` })
       };
     }
 
     const descriptionJson = await descriptionRes.json();
-    const description =
-      descriptionJson?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    const description = descriptionJson?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
 
     if (!description) {
       return {
@@ -85,36 +83,25 @@ exports.handler = async function (event, context) {
       };
     }
 
-    // Step 2: Generate keywords from description
+    // Step 2: Get keyword suggestions
     const productHint = productTypes?.length
-      ? `Focus on keywords for: ${productTypes.join(', ')}.`
+      ? ` Focus on these product types: ${productTypes.join(', ')}.`
       : "";
 
-    const keywordPrompt = `Generate SEO short-tail and long-tail keywords for the following image description. ${productHint}\nDescription: ${description}`;
+    const keywordPrompt = `
+Generate ONLY a valid JSON object with two properties:
+{
+  "shortTailKeywords": ["keyword1", "keyword2"],
+  "longTailKeywords": ["long phrase 1", "long phrase 2"]
+}
+No explanations. Only the JSON object.
+
+Description: ${description}
+${productHint}
+    `.trim();
 
     const keywordsPayload = {
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: keywordPrompt }]
-        }
-      ],
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: "OBJECT",
-          properties: {
-            shortTailKeywords: {
-              type: "ARRAY",
-              items: { type: "STRING" }
-            },
-            longTailKeywords: {
-              type: "ARRAY",
-              items: { type: "STRING" }
-            }
-          }
-        }
-      }
+      contents: [{ role: "user", parts: [{ text: keywordPrompt }] }]
     };
 
     const keywordsRes = await fetch(apiUrl, {
@@ -124,31 +111,32 @@ exports.handler = async function (event, context) {
     });
 
     if (!keywordsRes.ok) {
-      const errorData = await keywordsRes.text();
-      console.error("Keywords API failed:", errorData);
+      const errorText = await keywordsRes.text();
+      console.error("❌ Keywords API failed:", errorText);
       return {
         statusCode: 500,
-        body: JSON.stringify({ error: `Keywords API error: ${keywordsRes.status} - ${errorData}` })
+        body: JSON.stringify({ error: `Keywords API error: ${keywordsRes.status} - ${errorText}` })
       };
     }
 
     const keywordsJson = await keywordsRes.json();
-    const keywordsText = keywordsJson?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!keywordsText) {
-      return {
-        statusCode: 500,
-        body: JSON.stringify({ error: "No keywords returned from Gemini API." }),
-      };
-    }
+    const rawText = keywordsJson?.candidates?.[0]?.content?.parts?.[0]?.text;
+    console.log("🧠 Raw keyword text from Gemini:
+", rawText);
 
     let keywords;
     try {
-      keywords = JSON.parse(keywordsText);
+      keywords = JSON.parse(rawText);
     } catch (err) {
+      console.error("⚠️ Failed to parse keyword JSON. Returning safe fallback.");
       return {
-        statusCode: 500,
-        body: JSON.stringify({ error: "Failed to parse keyword JSON from Gemini response." }),
+        statusCode: 200,
+        body: JSON.stringify({
+          description,
+          shortTailKeywords: [],
+          longTailKeywords: [],
+          rawResponse: rawText
+        })
       };
     }
 
@@ -157,12 +145,11 @@ exports.handler = async function (event, context) {
       body: JSON.stringify({
         description,
         shortTailKeywords: keywords.shortTailKeywords || [],
-        longTailKeywords: keywords.longTailKeywords || []
+        longTailKeywords: keywords.longTailKeywords || [],
       })
     };
-
   } catch (err) {
-    console.error("Unexpected server error:", err);
+    console.error("🔥 Unexpected server error:", err);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: err.message || "Internal error occurred" })
