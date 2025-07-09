@@ -148,12 +148,12 @@ function App() {
     <img src="/x-icon.png" alt="Close" className="h-5 w-5" />
   </button>
         <h1 className="text-4xl font-bold mb-4 flex items-center gap-2">
-          <Sparkles size={40} />
+          <Sparkles size={20} />
           LavenderDragonDesign's Image Describer and Keyword Generator
         </h1>
 
         <label className="flex items-center gap-2 font-3xl mb-2">
-          <Upload size={40} />
+          <Upload size={20} />
           Upload Image:
         </label>
         <input type="file" onChange={handleImageChange} className="mb-4" />
@@ -169,7 +169,7 @@ function App() {
 
         <div className="mb-4">
           <label className="block font-2xl mb-1 flex items-center gap-2">
-            <Tag size={40} />
+            <Tag size={20} />
             Select Product Types (Optional - For Keywords):
           </label>
           {productTypes.map((type) => (
@@ -186,7 +186,7 @@ function App() {
 
         <div className="mb-4">
           <label className="block font-2xl mb-1 flex items-center gap-2">
-            <ImageIcon size={40} />
+            <ImageIcon size={20} />
             Background Color (Optional - For Description - Auto-Detect by Default):
           </label>
           {['auto-detect', 'black', 'white', 'transparent'].map((color) => (
@@ -207,7 +207,7 @@ function App() {
           disabled={isLoading}
           className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold transition flex items-center justify-center gap-2"
         >
-          <Sparkles size={40} />
+          <Sparkles size={20} />
           {isLoading ? 'Processing...' : 'Analyze Image'}
         </button>
 
@@ -218,7 +218,7 @@ function App() {
             {imageDescription && (
               <div className="mb-6">
                 <h2 className="font-bold mb-1 flex items-center gap-2">
-                  <FileText size={40} />
+                  <FileText size={20} />
                   Description
                 </h2>
                 <div className="flex items-start gap-2">
@@ -236,7 +236,7 @@ function App() {
                     {copiedDescription ? (
                       <Check className="text-green-600" size={16} />
                     ) : (
-                      <Copy size={40} />
+                      <Copy size={20} />
                     )}
                   </button>
                 </div>
@@ -246,7 +246,7 @@ function App() {
             {shortTailKeywords.length > 0 && (
               <div className="mb-6">
                 <h2 className="font-bold font-xl mb-1 flex items-center gap-2">
-                  <Tag size={40} />
+                  <Tag size={20} />
                   Short-Tail Keywords
                 </h2>
                 <div className="flex items-center gap-2">
@@ -274,7 +274,7 @@ function App() {
             {(longTailKeywords.length > 0 || rawResponse) && (
               <div className="mb-6">
                 <h2 className="font-bold mb-1 flex items-center gap-2">
-                  <Tag size={40} />
+                  <Tag size={20.} />
                   Long-Tail Keywords
                 </h2>
                 <div className="flex items-center gap-2">
@@ -303,7 +303,7 @@ function App() {
 
         <div className="mt-6 text-center text-sm text-gray-500">
           <div className="flex justify-center items-center gap-2 mb-1 text-gray-600">
-            <Coffee size={40} />
+            <Coffee size={20} />
             v 1.0 - Dev. By A. Kessler With Love
           </div>
           <a
