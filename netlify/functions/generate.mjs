@@ -18,24 +18,13 @@ export async function handler(event) {
     }
 
     const prompt = `
-You are an AI API. Return JSON inside <json></json> tags, and NOTHING else.
-Generate:
-- A clear, compelling Etsy-style product description
-- 5 short-tail keywords
-- 5 long-tail keywords
-
-Return exactly:
-<json>
+You are a helpful Etsy assistant. Generate a product description and 5 short + 5 long-tail keywords for the image provided.
+Respond ONLY with valid JSON in this format:
 {
   "description": "...",
-  "shortTailKeywords": ["...", "...", "...", "...", "..."],
-  "longTailKeywords": ["...", "...", "...", "...", "..."]
+  "shortTailKeywords": ["...", "..."],
+  "longTailKeywords": ["...", "..."]
 }
-</json>
-
-Image info:
-- Product types: ${productTypes.join(', ') || 'unspecified'}
-- Background: ${backgroundColor}
 `;
 
     const geminiRes = await fetch(
@@ -62,26 +51,19 @@ Image info:
     );
 
     const geminiData = await geminiRes.json();
-    const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    console.log("📩 Raw Gemini response:", text);
+    const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "⚠️ No response content.";
 
-    const jsonMatch = text.match(/<json>([\s\S]*?)<\/json>/i);
-    if (!jsonMatch) throw new Error("Could not extract <json> block from Gemini response.");
-
-    let parsed;
-    try {
-      parsed = JSON.parse(jsonMatch[1]);
-    } catch (err) {
-      console.error("❌ JSON parse error:", err);
-      throw new Error("Failed to parse extracted Gemini JSON.");
-    }
+    console.log("💬 FULL RAW RESPONSE FROM GEMINI:");
+    console.log(JSON.stringify(geminiData, null, 2));
 
     return {
       statusCode: 200,
-      body: JSON.stringify(parsed)
+      body: JSON.stringify({
+        rawGeminiOutput: text
+      })
     };
   } catch (error) {
-    console.error('Gemini fallback function error:', error);
+    console.error('Gemini DEBUG error:', error);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: error.message })
