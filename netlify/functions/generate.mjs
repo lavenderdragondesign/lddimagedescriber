@@ -18,16 +18,19 @@ export async function handler(event) {
     }
 
     const prompt = `
-You are an assistant helping an Etsy seller. Based on the uploaded image, return a short description and keyword suggestions.
+Please look at the image and respond with only a JSON object containing the fields:
+"description", "shortTailKeywords", and "longTailKeywords".
 
-Respond ONLY with valid JSON in this format:
+Example:
 <json>
 {
-  "description": "short summary here",
-  "shortTailKeywords": ["keyword1", "keyword2", "etc"],
-  "longTailKeywords": ["long phrase keyword", "another long keyword"]
+  "description": "A cute Halloween ghost PNG clipart in kawaii style.",
+  "shortTailKeywords": ["ghost", "Halloween", "kawaii"],
+  "longTailKeywords": ["kawaii ghost clipart", "cute Halloween sticker", "pastel ghost PNG"]
 }
 </json>
+
+Do NOT include any extra text or explanation.
 `;
 
     const geminiRes = await fetch(
@@ -55,14 +58,16 @@ Respond ONLY with valid JSON in this format:
 
     const geminiData = await geminiRes.json();
     const fullText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    console.log("🔍 Gemini response:", fullText);
+    console.log("🧠 Gemini raw output:\n", fullText);
 
-    // Try <json> tag first, fallback to first { }
     let jsonString;
+
+    // First try <json>...</json>
     const tagMatch = fullText.match(/<json>([\s\S]*?)<\/json>/i);
     if (tagMatch) {
       jsonString = tagMatch[1].trim();
     } else {
+      // Fallback: Try first {...} block
       const fallbackMatch = fullText.match(/\{[\s\S]*?\}/);
       jsonString = fallbackMatch?.[0]?.trim();
     }
@@ -87,9 +92,10 @@ Respond ONLY with valid JSON in this format:
     return {
       statusCode: 500,
       body: JSON.stringify({
-        error: error.message || 'Unknown error',
-        rawGeminiOutput: error.stack || '',
+        error: error.message,
+        rawGeminiOutput: error.stack || '[No content]',
       }),
     };
   }
 }
+
