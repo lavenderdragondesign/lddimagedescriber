@@ -26,6 +26,7 @@ function App() {
   const [copiedDescription, setCopiedDescription] = useState(false);
   const [copiedShortTail, setCopiedShortTail] = useState(false);
   const [copiedLongTail, setCopiedLongTail] = useState(false);
+  const [showPopup, setShowPopup] = useState(false);
 
   const productTypes = ['shirt', 'mug', 'tumbler', 'png', 'svg'];
 
@@ -113,6 +114,7 @@ function App() {
 
       const result = await res.json();
       setImageDescription(result.description);
+      setShowPopup(true);
       setShortTailKeywords(result.shortTailKeywords || []);
       setLongTailKeywords(result.longTailKeywords || []);
     } catch (error) {
@@ -208,7 +210,7 @@ function App() {
 
         {errorMessage && <p className="mt-4 text-red-600">{errorMessage}</p>}
 
-        {(imageDescription || shortTailKeywords.length > 0 || longTailKeywords.length > 0) && (
+        {showPopup && (
           <div className="mt-4">
             {imageDescription && (
               <div className="mb-6">
