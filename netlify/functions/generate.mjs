@@ -18,17 +18,22 @@ export async function handler(event) {
     }
 
     const prompt = `
-You are an API. Return ONLY valid compact JSON, no explanation.
-Generate a clear Etsy-style product description and 5 short-tail and 5 long-tail keywords.
+You are an AI API. Return JSON inside <json></json> tags, and NOTHING else.
+Generate:
+- A clear, compelling Etsy-style product description
+- 5 short-tail keywords
+- 5 long-tail keywords
 
-Example output:
+Return exactly:
+<json>
 {
   "description": "...",
   "shortTailKeywords": ["...", "...", "...", "...", "..."],
   "longTailKeywords": ["...", "...", "...", "...", "..."]
 }
+</json>
 
-Image description info:
+Image info:
 - Product types: ${productTypes.join(', ') || 'unspecified'}
 - Background: ${backgroundColor}
 `;
@@ -58,19 +63,14 @@ Image description info:
 
     const geminiData = await geminiRes.json();
     const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    console.log("🧠 Raw Gemini response:", text);
+    console.log("📩 Raw Gemini response:", text);
 
-    // Try to extract just the JSON
-    const firstBrace = text.indexOf('{');
-    const lastBrace = text.lastIndexOf('}');
-    if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
-      throw new Error("Could not extract valid JSON from Gemini response.");
-    }
+    const jsonMatch = text.match(/<json>([\s\S]*?)<\/json>/i);
+    if (!jsonMatch) throw new Error("Could not extract <json> block from Gemini response.");
 
-    const jsonString = text.slice(firstBrace, lastBrace + 1);
     let parsed;
     try {
-      parsed = JSON.parse(jsonString);
+      parsed = JSON.parse(jsonMatch[1]);
     } catch (err) {
       console.error("❌ JSON parse error:", err);
       throw new Error("Failed to parse extracted Gemini JSON.");
@@ -81,7 +81,7 @@ Image description info:
       body: JSON.stringify(parsed)
     };
   } catch (error) {
-    console.error('Gemini function error:', error);
+    console.error('Gemini fallback function error:', error);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: error.message })
