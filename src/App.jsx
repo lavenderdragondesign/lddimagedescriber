@@ -1,6 +1,6 @@
 // App.jsx
 import React, { useState } from 'react';
-import { Copy, Check } from 'lucide-react'; // Import Lucide icons
+import { Copy, Check } from 'lucide-react';
 
 function App() {
   const [selectedImage, setSelectedImage] = useState(null);
@@ -10,9 +10,12 @@ function App() {
   const [longTailKeywords, setLongTailKeywords] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [copyMessage, setCopyMessage] = useState('');
   const [selectedProductTypes, setSelectedProductTypes] = useState([]);
   const [selectedBackgroundColor, setSelectedBackgroundColor] = useState('auto-detect');
+
+  const [copiedDescription, setCopiedDescription] = useState(false);
+  const [copiedShortTail, setCopiedShortTail] = useState(false);
+  const [copiedLongTail, setCopiedLongTail] = useState(false);
 
   const productTypes = ['shirt', 'mug', 'tumbler', 'png', 'svg'];
 
@@ -24,7 +27,6 @@ function App() {
       setImageDescription('');
       setShortTailKeywords([]);
       setLongTailKeywords([]);
-      setCopyMessage('');
       setSelectedProductTypes([]);
       setSelectedBackgroundColor('auto-detect');
 
@@ -52,7 +54,7 @@ function App() {
     setSelectedBackgroundColor(event.target.value);
   };
 
-  const handleCopy = (textToCopy) => {
+  const handleCopy = (textToCopy, setCopiedState) => {
     try {
       const textarea = document.createElement('textarea');
       textarea.value = textToCopy;
@@ -62,12 +64,10 @@ function App() {
       textarea.select();
       document.execCommand('copy');
       document.body.removeChild(textarea);
-      setCopyMessage('Copied!');
-      setTimeout(() => setCopyMessage(''), 2000);
+      setCopiedState(true);
+      setTimeout(() => setCopiedState(false), 2000);
     } catch (err) {
       console.error('Failed to copy text: ', err);
-      setCopyMessage('Failed to copy!');
-      setTimeout(() => setCopyMessage(''), 2000);
     }
   };
 
@@ -77,7 +77,6 @@ function App() {
     setImageDescription('');
     setShortTailKeywords([]);
     setLongTailKeywords([]);
-    setCopyMessage('');
 
     if (!base64Image) {
       setErrorMessage('Please upload an image first.');
@@ -116,6 +115,12 @@ function App() {
 
   return (
     <div className="min-h-screen p-4 bg-gray-100 font-sans">
+      <div className="flex justify-center mb-4">
+        <img src="/logo.jpg" alt="Logo" className="h-16" />
+      </div>
+      <p className="text-center text-red-600 font-semibold mb-4">
+        This App is in Beta. Expect Crashes, Bugs, and Possible Incorrect Descriptions. If errors occur, refresh the page or wait a few minutes due to high usage.
+      </p>
       <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-6">
         <h1 className="text-2xl font-bold mb-4">LavenderDragonDesign's Image Describer and Keyword Generator</h1>
         <input type="file" onChange={handleImageChange} className="mb-4" />
@@ -181,11 +186,11 @@ function App() {
                     value={imageDescription}
                   />
                   <button
-                    onClick={() => handleCopy(imageDescription)}
+                    onClick={() => handleCopy(imageDescription, setCopiedDescription)}
                     className="bg-gray-200 hover:bg-gray-300 p-2 rounded mt-1"
                     title="Copy Description"
                   >
-                    {copyMessage === 'Copied!' ? (
+                    {copiedDescription ? (
                       <Check className="text-green-600" size={16} />
                     ) : (
                       <Copy size={16} />
@@ -206,11 +211,11 @@ function App() {
                     value={shortTailKeywords.join(', ')}
                   />
                   <button
-                    onClick={() => handleCopy(shortTailKeywords.join(', '))}
+                    onClick={() => handleCopy(shortTailKeywords.join(', '), setCopiedShortTail)}
                     className="bg-gray-200 hover:bg-gray-300 p-2 rounded"
                     title="Copy Short-Tail Keywords"
                   >
-                    {copyMessage === 'Copied!' ? (
+                    {copiedShortTail ? (
                       <Check className="text-green-600" size={16} />
                     ) : (
                       <Copy size={16} />
@@ -231,11 +236,11 @@ function App() {
                     value={longTailKeywords.join(', ')}
                   />
                   <button
-                    onClick={() => handleCopy(longTailKeywords.join(', '))}
+                    onClick={() => handleCopy(longTailKeywords.join(', '), setCopiedLongTail)}
                     className="bg-gray-200 hover:bg-gray-300 p-2 rounded"
                     title="Copy Long-Tail Keywords"
                   >
-                    {copyMessage === 'Copied!' ? (
+                    {copiedLongTail ? (
                       <Check className="text-green-600" size={16} />
                     ) : (
                       <Copy size={16} />
@@ -245,12 +250,22 @@ function App() {
               </div>
             )}
           </div>
-        )}
-
-        {copyMessage && <p className="mt-2 text-green-600">{copyMessage}</p>}
-      </div>
-    </div>
-  );
+        )}$1
+        <div className="mt-6 text-center text-sm text-gray-500">
+          v 1.0 - Dev. By A. Kessler With Love,<br />
+          <a
+            href="https://www.buymeacoffee.com/lavenderdragondesigns"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <img
+              src="/yellow-button.png"
+              alt="Buy Me a Coffee"
+              className="mx-auto mt-2 h-12"
+            />
+          </a>
+        </div>
+      );
 }
 
 export default App;
