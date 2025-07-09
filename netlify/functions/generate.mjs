@@ -25,6 +25,8 @@ export async function handler(event) {
       body: JSON.stringify({ inputs: base64Image })
     });
     const captionResult = await captionResponse.json();
+    console.log("📸 Caption Result:", captionResult); // <- ADD THIS LINE
+
     const caption = captionResult[0]?.generated_text || "an image";
 
     // Step 2: Description via Mixtral
