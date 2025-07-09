@@ -134,7 +134,7 @@ function App() {
       </p>
 
       
-<div className="max-w-3xl mx-auto bg-white rounded-xl shadow-lg p-6 relative">
+<div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-6 relative">
   <button
     onClick={() => setShowPopup(false)}
     className="absolute top-2 right-2"
