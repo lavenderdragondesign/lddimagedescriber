@@ -1,86 +1,80 @@
 import fetch from 'node-fetch';
 
-export async function handler(event, context) {
-  console.log("📨 Incoming Request Body:", event.body);
-
+export async function handler(event) {
   try {
-    const { imageBase64, mimeType, backgroundColor, productTypes } = JSON.parse(event.body || '{}');
+    const body = JSON.parse(event.body || '{}');
+    const base64Image = body.imageBase64;
+    const mimeType = body.mimeType || 'image/jpeg';
 
-    if (!imageBase64 || !mimeType) {
-      console.error("❌ Missing required fields.");
-      if (!parsed.description && (!parsed.shortTailKeywords || parsed.shortTailKeywords.length === 0) && (!parsed.longTailKeywords || parsed.longTailKeywords.length === 0)) {
-    console.warn("👻 Empty AI response. Returning fallback.");
+    if (!base64Image) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: 'Missing image data' })
+      };
+    }
+
+    // Step 1: BLIP Caption
+    const captionResponse = await fetch('https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-base', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer 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',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ inputs: base64Image })
+    });
+    const captionResult = await captionResponse.json();
+    const caption = captionResult[0]?.generated_text || "an image";
+
+    // Step 2: Description via Mixtral
+    const prompt = "Write a detailed Etsy-style product description for the following image concept: " + caption;
+    const textGenResponse = await fetch('https://api-inference.huggingface.co/models/mistralai/Mixtral-8x7B-Instruct-v0.1', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer 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',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        inputs: prompt,
+        parameters: { max_new_tokens: 100 }
+      })
+    });
+    const textGenResult = await textGenResponse.json();
+    const description = textGenResult[0]?.generated_text?.replace(/^.*?: /, '') || caption;
+
+    // Step 3: Keyword extraction from final description
+    const keywordPrompt = "Extract 13 Etsy-style keywords from this product description, in comma-separated format:\n" + description;
+    const keywordResponse = await fetch('https://api-inference.huggingface.co/models/mistralai/Mixtral-8x7B-Instruct-v0.1', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer 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',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        inputs: keywordPrompt,
+        parameters: { max_new_tokens: 60 }
+      })
+    });
+    const keywordResult = await keywordResponse.json();
+    const keywordText = keywordResult[0]?.generated_text || "";
+    const keywordArray = keywordText
+      .replace(/^.*?:\s*/, '')
+      .split(',')
+      .map(k => k.trim())
+      .filter(k => k.length > 0);
+
     return {
       statusCode: 200,
       body: JSON.stringify({
-        description: "No valid content returned. Possibly AI goofed.",
-        shortTailKeywords: [],
-        longTailKeywords: []
+        description,
+        shortTailKeywords: keywordArray.slice(0, 5),
+        longTailKeywords: keywordArray.slice(5)
       })
     };
-  }
-  return {
-        statusCode: 400,
-        body: JSON.stringify({ error: "Missing required fields: imageBase64 or mimeType." })
-      };
-    }
-
-    const geminiRes = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent?key=" + process.env.GEMINI_API_KEY, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                inlineData: {
-                  mimeType,
-                  data: imageBase64,
-                },
-              },
-              {
-                text: `Describe this image in detail. Then generate 5 short-tail keywords and 5 long-tail keywords related to it. Product context: ${productTypes?.join(', ') || 'none'}. Background color: ${backgroundColor}. Return a JSON object with keys: description, shortTailKeywords, longTailKeywords.`,
-              },
-            ],
-          },
-        ],
-      }),
-    });
-
-    const geminiData = await geminiRes.json();
-
-    const fullText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    console.log("🧠 Gemini Raw Text:", fullText);
-
-    let parsed;
-    try {
-      parsed = JSON.parse(fullText);
-    } catch (e) {
-      console.warn("⚠️ Failed to parse JSON. Returning raw text.");
-      return {
-        statusCode: 200,
-        body: JSON.stringify({
-          description: fullText,
-          shortTailKeywords: [],
-          longTailKeywords: [],
-          rawResponse: fullText,
-        }),
-      };
-    }
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify({
-        description: parsed.description || "",
-        shortTailKeywords: parsed.shortTailKeywords || [],
-        longTailKeywords: parsed.longTailKeywords || [],
-      }),
-    };
   } catch (err) {
-    console.error("🔥 Internal Server Error:", err);
+    console.error("Hugging Face pipeline error:", err);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: "Internal Server Error", details: err.message })
+      body: JSON.stringify({ error: err.message })
     };
   }
 }
