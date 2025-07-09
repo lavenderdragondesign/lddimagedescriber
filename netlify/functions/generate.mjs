@@ -121,8 +121,7 @@ ${productHint}
 
     const keywordsJson = await keywordsRes.json();
     const rawText = keywordsJson?.candidates?.[0]?.content?.parts?.[0]?.text;
-    console.log("🧠 Raw keyword text from Gemini:
-", rawText);
+    console.log("🧠 Raw keyword text from Gemini:", rawText);
 
     let keywords = {
       shortTailKeywords: [],
