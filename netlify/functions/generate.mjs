@@ -60,10 +60,17 @@ Image and details:
 
     const geminiData = await geminiRes.json();
     const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    const jsonStart = text.indexOf('{');
-    const jsonEnd = text.lastIndexOf('}');
-    const jsonString = text.slice(jsonStart, jsonEnd + 1);
-    const parsed = JSON.parse(jsonString);
+
+    const jsonMatch = text.match(/\{[\s\S]*?\}/);
+    if (!jsonMatch) throw new Error("Could not extract JSON from Gemini response.");
+
+    let parsed;
+    try {
+      parsed = JSON.parse(jsonMatch[0]);
+    } catch (err) {
+      console.error("JSON parse error:", err);
+      throw new Error("Failed to parse Gemini response as JSON.");
+    }
 
     return {
       statusCode: 200,
