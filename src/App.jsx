@@ -31,58 +31,9 @@ function App() {
 
   const productTypes = ['shirt', 'mug', 'tumbler', 'png', 'svg'];
 
-  
-const resizeImageIfNeeded = (file, maxWidth = 1000, maxHeight = 1000) => {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      img.src = e.target.result;
-    };
-    img.onload = () => {
-      let width = img.width;
-      let height = img.height;
-
-      if (width > maxWidth || height > maxHeight) {
-        const aspect = width / height;
-        if (aspect > 1) {
-          width = maxWidth;
-          height = maxWidth / aspect;
-        } else {
-          height = maxHeight;
-          width = maxHeight * aspect;
-        }
-      }
-
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, width, height);
-      canvas.toBlob((blob) => {
-        const resizedReader = new FileReader();
-        resizedReader.onloadend = () => {
-          const base64 = resizedReader.result.split(',')[1];
-          console.log("🖼️ Resized Base64 length:", base64.length);
-          resolve(base64);
-        };
-        resizedReader.onerror = reject;
-        resizedReader.readAsDataURL(blob);
-      }, 'image/jpeg', 0.8);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-};
-
-
-  const handleImageChange = async (event) => {
+  const handleImageChange = (event) => {
     const file = event.target.files[0];
     if (file) {
-      if (file.size > 3 * 1024 * 1024) {
-        setErrorMessage("Image too large. Please upload a file under 3MB.");
-        return;
-      }
       setSelectedImage(file);
       setErrorMessage('');
       setImageDescription('');
@@ -92,8 +43,7 @@ const resizeImageIfNeeded = (file, maxWidth = 1000, maxHeight = 1000) => {
       setSelectedBackgroundColor('auto-detect');
 
       const reader = new FileReader();
-      const base64 = await resizeImageIfNeeded(file);
-      setBase64Image(base64);
+      reader.onloadend = () => setBase64Image(reader.result.split(',')[1]);
       reader.onerror = () => {
         setErrorMessage('Failed to read image file.');
         setBase64Image('');
@@ -164,6 +114,11 @@ const resizeImageIfNeeded = (file, maxWidth = 1000, maxHeight = 1000) => {
       }
 
       const result = await res.json();
+      if (!result.description && (!result.shortTailKeywords || result.shortTailKeywords.length === 0) && (!result.longTailKeywords || result.longTailKeywords.length === 0)) {
+        setErrorMessage("AI responded, but didn’t return any usable info. Try another image or refresh.");
+        return;
+      }
+    
       setImageDescription(result.description);
       setRawResponse(result.rawResponse || "");
       setShowPopup(true);
