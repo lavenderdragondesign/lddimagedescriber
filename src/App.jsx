@@ -1,4 +1,3 @@
-// App.jsx
 import React, { useState } from 'react';
 import { Copy, Check, Image as ImageIcon, Sparkles } from 'lucide-react';
 
@@ -73,9 +72,14 @@ function App() {
       {errorMessage && <p className="text-red-600 mt-2">{errorMessage}</p>}
 
       {popupVisible && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center">
-          <div className="bg-white p-6 rounded shadow max-w-xl w-full relative">
-            <button onClick={() => setPopupVisible(false)} className="absolute top-2 right-2">❌</button>
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">
+          <div className="bg-white p-6 rounded shadow max-w-xl w-full relative overflow-y-auto max-h-[90vh]">
+            <button
+              onClick={() => setPopupVisible(false)}
+              className="absolute top-2 right-2 text-gray-500 hover:text-black"
+            >
+              ❌
+            </button>
 
             <div className="mb-4">
               <h2 className="font-bold flex items-center gap-2"><ImageIcon size={16} /> Description</h2>
@@ -103,7 +107,7 @@ function App() {
               </button>
             </div>
 
-            <div>
+            <div className="mb-4">
               <h2 className="font-bold flex items-center gap-2"><Sparkles size={16} /> Long-Tail Keywords</h2>
               <input
                 type="text"
@@ -115,6 +119,18 @@ function App() {
                 {copied === 'long' ? <Check size={16} /> : <Copy size={16} />} Copy
               </button>
             </div>
+
+            {rawResponse && (
+              <div className="mt-4">
+                <h2 className="font-bold text-sm text-gray-700">Raw Gemini Output</h2>
+                <textarea
+                  readOnly
+                  className="w-full text-xs bg-gray-100 border p-2 rounded"
+                  rows={6}
+                  value={rawResponse}
+                />
+              </div>
+            )}
           </div>
         </div>
       )}
