@@ -59,17 +59,18 @@ Image and details:
     );
 
     const geminiData = await geminiRes.json();
-    const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    console.log("🧠 Raw Gemini response:", rawText);
 
-    const jsonMatch = text.match(/\{[\s\S]*?\}/);
-    if (!jsonMatch) throw new Error("Could not extract JSON from Gemini response.");
+    // Clean common preambles like "Sure! Here's your result:"
+    const trimmed = rawText.replace(/^[^\{]*?\{/, '{').replace(/\}[\s\S]*$/, '}');
 
     let parsed;
     try {
-      parsed = JSON.parse(jsonMatch[0]);
+      parsed = JSON.parse(trimmed);
     } catch (err) {
-      console.error("JSON parse error:", err);
-      throw new Error("Failed to parse Gemini response as JSON.");
+      console.error("❌ JSON parse error:", err);
+      throw new Error("Failed to extract valid JSON from Gemini response.");
     }
 
     return {
