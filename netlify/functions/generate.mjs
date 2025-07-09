@@ -13,22 +13,24 @@ export async function handler(event) {
     if (!base64Image) {
       return {
         statusCode: 400,
-        body: JSON.stringify({ error: 'Missing image data' })
+        body: JSON.stringify({ error: 'Missing image data' }),
       };
     }
 
     const prompt = `
 You are a helpful Etsy assistant. Generate a product description and 5 short + 5 long-tail keywords for the image provided.
 Respond ONLY with valid JSON in this format:
+<json>
 {
   "description": "...",
   "shortTailKeywords": ["...", "..."],
   "longTailKeywords": ["...", "..."]
 }
+</json>
 `;
 
     const geminiRes = await fetch(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent?key=' + GEMINI_API_KEY,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -40,33 +42,47 @@ Respond ONLY with valid JSON in this format:
                 {
                   inlineData: {
                     mimeType: mimeType,
-                    data: base64Image
-                  }
-                }
-              ]
-            }
-          ]
-        })
+                    data: base64Image,
+                  },
+                },
+              ],
+            },
+          ],
+        }),
       }
     );
 
     const geminiData = await geminiRes.json();
-    const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "⚠️ No response content.";
+    const fullText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    console.log("🔍 Gemini fullText:\n", fullText);
 
-    console.log("💬 FULL RAW RESPONSE FROM GEMINI:");
-    console.log(JSON.stringify(geminiData, null, 2));
+    // Try to extract JSON inside <json>...</json> tags
+    const match = fullText.match(/<json>([\s\S]*?)<\/json>/i);
+    const jsonString = match?.[1]?.trim();
+
+    if (!jsonString) {
+      throw new Error('Could not extract <json> block from Gemini response.');
+    }
+
+    const parsed = JSON.parse(jsonString);
 
     return {
       statusCode: 200,
       body: JSON.stringify({
-        rawGeminiOutput: text
-      })
+        description: parsed.description || '',
+        shortTailKeywords: parsed.shortTailKeywords || [],
+        longTailKeywords: parsed.longTailKeywords || [],
+        rawGeminiOutput: fullText,
+      }),
     };
   } catch (error) {
-    console.error('Gemini DEBUG error:', error);
+    console.error('Gemini error:', error);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: error.message })
+      body: JSON.stringify({
+        error: error.message,
+        rawGeminiOutput: error.stack || 'No Gemini response',
+      }),
     };
   }
 }
