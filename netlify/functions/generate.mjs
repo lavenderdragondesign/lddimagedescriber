@@ -18,13 +18,14 @@ export async function handler(event) {
     }
 
     const prompt = `
-You are a helpful Etsy assistant. Generate a product description and 5 short + 5 long-tail keywords for the image provided.
+You are an assistant helping an Etsy seller. Based on the uploaded image, return a short description and keyword suggestions.
+
 Respond ONLY with valid JSON in this format:
 <json>
 {
-  "description": "...",
-  "shortTailKeywords": ["...", "..."],
-  "longTailKeywords": ["...", "..."]
+  "description": "short summary here",
+  "shortTailKeywords": ["keyword1", "keyword2", "etc"],
+  "longTailKeywords": ["long phrase keyword", "another long keyword"]
 }
 </json>
 `;
@@ -41,7 +42,7 @@ Respond ONLY with valid JSON in this format:
                 { text: prompt },
                 {
                   inlineData: {
-                    mimeType: mimeType,
+                    mimeType,
                     data: base64Image,
                   },
                 },
@@ -54,14 +55,20 @@ Respond ONLY with valid JSON in this format:
 
     const geminiData = await geminiRes.json();
     const fullText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    console.log("🔍 Gemini fullText:\n", fullText);
+    console.log("🔍 Gemini response:", fullText);
 
-    // Try to extract JSON inside <json>...</json> tags
-    const match = fullText.match(/<json>([\s\S]*?)<\/json>/i);
-    const jsonString = match?.[1]?.trim();
+    // Try <json> tag first, fallback to first { }
+    let jsonString;
+    const tagMatch = fullText.match(/<json>([\s\S]*?)<\/json>/i);
+    if (tagMatch) {
+      jsonString = tagMatch[1].trim();
+    } else {
+      const fallbackMatch = fullText.match(/\{[\s\S]*?\}/);
+      jsonString = fallbackMatch?.[0]?.trim();
+    }
 
     if (!jsonString) {
-      throw new Error('Could not extract <json> block from Gemini response.');
+      throw new Error('Could not extract JSON from Gemini response.');
     }
 
     const parsed = JSON.parse(jsonString);
@@ -80,8 +87,8 @@ Respond ONLY with valid JSON in this format:
     return {
       statusCode: 500,
       body: JSON.stringify({
-        error: error.message,
-        rawGeminiOutput: error.stack || 'No Gemini response',
+        error: error.message || 'Unknown error',
+        rawGeminiOutput: error.stack || '',
       }),
     };
   }
