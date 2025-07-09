@@ -1,8 +1,7 @@
 // App.jsx
 import React, { useState } from 'react';
-import { Copy } from 'lucide-react'; // Import Lucide Copy icon
+import { Copy, Check } from 'lucide-react'; // Import Lucide icons
 
-// Main App component
 function App() {
   const [selectedImage, setSelectedImage] = useState(null);
   const [base64Image, setBase64Image] = useState('');
@@ -45,9 +44,7 @@ function App() {
 
   const handleProductTypeChange = (type) => {
     setSelectedProductTypes((prevTypes) =>
-      prevTypes.includes(type)
-        ? prevTypes.filter((t) => t !== type)
-        : [...prevTypes, type]
+      prevTypes.includes(type) ? prevTypes.filter((t) => t !== type) : [...prevTypes, type]
     );
   };
 
@@ -96,8 +93,8 @@ function App() {
           imageBase64: base64Image,
           mimeType: selectedImage.type,
           backgroundColor: selectedBackgroundColor,
-          productTypes: selectedProductTypes
-        })
+          productTypes: selectedProductTypes,
+        }),
       });
 
       if (!res.ok) {
@@ -171,28 +168,82 @@ function App() {
 
         {errorMessage && <p className="mt-4 text-red-600">{errorMessage}</p>}
 
-        {imageDescription && (
+        {(imageDescription || shortTailKeywords.length > 0 || longTailKeywords.length > 0) && (
           <div className="mt-4">
-            <h2 className="font-bold">Description</h2>
-            <p className="text-gray-800 whitespace-pre-wrap">{imageDescription}</p>
-          </div>
-        )}
+            {imageDescription && (
+              <div className="mb-6">
+                <h2 className="font-bold mb-1">Description</h2>
+                <div className="flex items-start gap-2">
+                  <textarea
+                    readOnly
+                    className="w-full border rounded p-2 resize-none"
+                    rows={4}
+                    value={imageDescription}
+                  />
+                  <button
+                    onClick={() => handleCopy(imageDescription)}
+                    className="bg-gray-200 hover:bg-gray-300 p-2 rounded mt-1"
+                    title="Copy Description"
+                  >
+                    {copyMessage === 'Copied!' ? (
+                      <Check className="text-green-600" size={16} />
+                    ) : (
+                      <Copy size={16} />
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
 
-        {(shortTailKeywords.length > 0 || longTailKeywords.length > 0) && (
-          <div className="mt-4">
-            <h2 className="font-bold mb-2">Keywords</h2>
-            <div className="mb-2">
-              <strong>Short-Tail:</strong>
-              <ul className="list-disc list-inside">
-                {shortTailKeywords.map((k, i) => <li key={i}>{k}</li>)}
-              </ul>
-            </div>
-            <div>
-              <strong>Long-Tail:</strong>
-              <ul className="list-disc list-inside">
-                {longTailKeywords.map((k, i) => <li key={i}>{k}</li>)}
-              </ul>
-            </div>
+            {shortTailKeywords.length > 0 && (
+              <div className="mb-6">
+                <h2 className="font-bold mb-1">Short-Tail Keywords</h2>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    className="flex-1 border rounded px-2 py-1"
+                    value={shortTailKeywords.join(', ')}
+                  />
+                  <button
+                    onClick={() => handleCopy(shortTailKeywords.join(', '))}
+                    className="bg-gray-200 hover:bg-gray-300 p-2 rounded"
+                    title="Copy Short-Tail Keywords"
+                  >
+                    {copyMessage === 'Copied!' ? (
+                      <Check className="text-green-600" size={16} />
+                    ) : (
+                      <Copy size={16} />
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {longTailKeywords.length > 0 && (
+              <div className="mb-6">
+                <h2 className="font-bold mb-1">Long-Tail Keywords</h2>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    className="flex-1 border rounded px-2 py-1"
+                    value={longTailKeywords.join(', ')}
+                  />
+                  <button
+                    onClick={() => handleCopy(longTailKeywords.join(', '))}
+                    className="bg-gray-200 hover:bg-gray-300 p-2 rounded"
+                    title="Copy Long-Tail Keywords"
+                  >
+                    {copyMessage === 'Copied!' ? (
+                      <Check className="text-green-600" size={16} />
+                    ) : (
+                      <Copy size={16} />
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
