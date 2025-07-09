@@ -15,8 +15,8 @@ export async function handler(event) {
       };
     }
 
-    // Step 1: BLIP Caption
-    const captionResponse = await fetch('https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-base', {
+    // Step 1: BLIP Large Caption
+    const captionResponse = await fetch('https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-large', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${hfToken}`,
