@@ -250,7 +250,6 @@ function App() {
               </div>
             )}
           </div>
-        )}$1
         <div className="mt-6 text-center text-sm text-gray-500">
           v 1.0 - Dev. By A. Kessler With Love,<br />
           <a
