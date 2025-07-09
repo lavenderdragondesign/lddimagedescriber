@@ -27,6 +27,7 @@ function App() {
   const [copiedShortTail, setCopiedShortTail] = useState(false);
   const [copiedLongTail, setCopiedLongTail] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
+  const [rawResponse, setRawResponse] = useState("");
 
   const productTypes = ['shirt', 'mug', 'tumbler', 'png', 'svg'];
 
@@ -114,6 +115,8 @@ function App() {
 
       const result = await res.json();
       setImageDescription(result.description);
+      setRawResponse(result.rawResponse || "");
+      setShowPopup(true);
       setShowPopup(true);
       setShortTailKeywords(result.shortTailKeywords || []);
       setLongTailKeywords(result.longTailKeywords || []);
@@ -130,7 +133,7 @@ function App() {
       <div className="flex justify-center mb-4">
         <img src="/logo.jpg" alt="Logo" className="h-16" />
       </div>
-      <p className="text-center text-red-600 font-semibold mb-4">
+      <p className="text-center text-red-600 font-semibold font-2xl mb-4">
         This App is in Beta. Expect Crashes, Bugs, and Possible Incorrect Descriptions.
         If errors occur, refresh the page or wait a few minutes due to high usage.
       </p>
@@ -144,13 +147,13 @@ function App() {
   >
     <img src="/x-icon.png" alt="Close" className="h-5 w-5" />
   </button>
-        <h1 className="text-2xl font-bold mb-4 flex items-center gap-2">
-          <Sparkles size={20} />
+        <h1 className="text-4xl font-bold mb-4 flex items-center gap-2">
+          <Sparkles size={40} />
           LavenderDragonDesign's Image Describer and Keyword Generator
         </h1>
 
-        <label className="flex items-center gap-2 font-medium mb-2">
-          <Upload size={16} />
+        <label className="flex items-center gap-2 font-3xl mb-2">
+          <Upload size={40} />
           Upload Image:
         </label>
         <input type="file" onChange={handleImageChange} className="mb-4" />
@@ -165,9 +168,9 @@ function App() {
         )}
 
         <div className="mb-4">
-          <label className="block font-medium mb-1 flex items-center gap-2">
-            <Tag size={16} />
-            Select Product Types:
+          <label className="block font-2xl mb-1 flex items-center gap-2">
+            <Tag size={40} />
+            Select Product Types (Optional - For Keywords):
           </label>
           {productTypes.map((type) => (
             <label key={type} className="inline-flex items-center mr-4">
@@ -182,9 +185,9 @@ function App() {
         </div>
 
         <div className="mb-4">
-          <label className="block font-medium mb-1 flex items-center gap-2">
-            <ImageIcon size={16} />
-            Background Color:
+          <label className="block font-2xl mb-1 flex items-center gap-2">
+            <ImageIcon size={40} />
+            Background Color (Optional - For Description - Auto-Detect by Default):
           </label>
           {['auto-detect', 'black', 'white', 'transparent'].map((color) => (
             <label key={color} className="inline-flex items-center mr-4">
@@ -204,7 +207,7 @@ function App() {
           disabled={isLoading}
           className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold transition flex items-center justify-center gap-2"
         >
-          <Sparkles size={18} />
+          <Sparkles size={40} />
           {isLoading ? 'Processing...' : 'Analyze Image'}
         </button>
 
@@ -215,7 +218,7 @@ function App() {
             {imageDescription && (
               <div className="mb-6">
                 <h2 className="font-bold mb-1 flex items-center gap-2">
-                  <FileText size={16} />
+                  <FileText size={40} />
                   Description
                 </h2>
                 <div className="flex items-start gap-2">
@@ -233,7 +236,7 @@ function App() {
                     {copiedDescription ? (
                       <Check className="text-green-600" size={16} />
                     ) : (
-                      <Copy size={16} />
+                      <Copy size={40} />
                     )}
                   </button>
                 </div>
@@ -242,8 +245,8 @@ function App() {
 
             {shortTailKeywords.length > 0 && (
               <div className="mb-6">
-                <h2 className="font-bold mb-1 flex items-center gap-2">
-                  <Tag size={16} />
+                <h2 className="font-bold font-xl mb-1 flex items-center gap-2">
+                  <Tag size={40} />
                   Short-Tail Keywords
                 </h2>
                 <div className="flex items-center gap-2">
@@ -259,19 +262,19 @@ function App() {
                     title="Copy Short-Tail Keywords"
                   >
                     {copiedShortTail ? (
-                      <Check className="text-green-600" size={16} />
+                      <Check className="text-green-600" size={20} />
                     ) : (
-                      <Copy size={16} />
+                      <Copy size={20} />
                     )}
                   </button>
                 </div>
               </div>
             )}
 
-            {longTailKeywords.length > 0 && (
+            {(longTailKeywords.length > 0 || rawResponse) && (
               <div className="mb-6">
                 <h2 className="font-bold mb-1 flex items-center gap-2">
-                  <Tag size={16} />
+                  <Tag size={40} />
                   Long-Tail Keywords
                 </h2>
                 <div className="flex items-center gap-2">
@@ -287,9 +290,9 @@ function App() {
                     title="Copy Long-Tail Keywords"
                   >
                     {copiedLongTail ? (
-                      <Check className="text-green-600" size={16} />
+                      <Check className="text-green-600" size={20} />
                     ) : (
-                      <Copy size={16} />
+                      <Copy size={20} />
                     )}
                   </button>
                 </div>
@@ -300,7 +303,7 @@ function App() {
 
         <div className="mt-6 text-center text-sm text-gray-500">
           <div className="flex justify-center items-center gap-2 mb-1 text-gray-600">
-            <Coffee size={16} />
+            <Coffee size={40} />
             v 1.0 - Dev. By A. Kessler With Love
           </div>
           <a
