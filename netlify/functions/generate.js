@@ -124,28 +124,27 @@ ${productHint}
     console.log("🧠 Raw keyword text from Gemini:
 ", rawText);
 
-    let keywords;
+    let keywords = {
+      shortTailKeywords: [],
+      longTailKeywords: [],
+      rawResponse: rawText || "No text returned"
+    };
+
     try {
-      keywords = JSON.parse(rawText);
+      const parsed = JSON.parse(rawText);
+      keywords.shortTailKeywords = parsed.shortTailKeywords || [];
+      keywords.longTailKeywords = parsed.longTailKeywords || [];
     } catch (err) {
-      console.error("⚠️ Failed to parse keyword JSON. Returning safe fallback.");
-      return {
-        statusCode: 200,
-        body: JSON.stringify({
-          description,
-          shortTailKeywords: [],
-          longTailKeywords: [],
-          rawResponse: rawText
-        })
-      };
+      console.warn("⚠️ Failed to parse keyword JSON. Using raw fallback.");
     }
 
     return {
       statusCode: 200,
       body: JSON.stringify({
         description,
-        shortTailKeywords: keywords.shortTailKeywords || [],
-        longTailKeywords: keywords.longTailKeywords || [],
+        shortTailKeywords: keywords.shortTailKeywords,
+        longTailKeywords: keywords.longTailKeywords,
+        rawResponse: keywords.rawResponse
       })
     };
   } catch (err) {
