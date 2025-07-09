@@ -1,109 +1,105 @@
-const fetch = require("node-fetch");
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-exports.handler = async function(event, context) {
+exports.handler = async (event) => {
   try {
     const { imageBase64, mimeType, backgroundColor, productTypes } = JSON.parse(event.body);
 
-    if (!imageBase64 || !mimeType) {
+    if (!process.env.GEMINI_API_KEY) {
       return {
-        statusCode: 400,
-        body: JSON.stringify({ error: "Missing required image data." }),
+        statusCode: 401,
+        body: JSON.stringify({ error: 'API key is missing or invalid.' }),
       };
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
-    // 1. Create image description prompt
-    let descriptionPrompt;
-    if (backgroundColor === 'black') {
-      descriptionPrompt = "Provide a detailed image description and specify the black background. Limit to ~80 words.";
-    } else if (backgroundColor === 'white') {
-      descriptionPrompt = "Provide a detailed image description and specify the white background. Limit to ~80 words.";
-    } else if (backgroundColor === 'transparent') {
-      descriptionPrompt = "Provide a detailed image description and specify the transparent background. Limit to ~80 words.";
-    } else {
-      descriptionPrompt = "Provide a detailed description of this image including background color and visual elements. Limit to ~80 words.";
+    let descriptionPrompt = 'Describe the image in detail.';
+
+    switch (backgroundColor) {
+      case 'black':
+        descriptionPrompt = 'Describe the image and mention that the background is black.';
+        break;
+      case 'white':
+        descriptionPrompt = 'Describe the image and mention that the background is white.';
+        break;
+      case 'transparent':
+        descriptionPrompt = 'Describe the image and mention that the background is transparent.';
+        break;
+      case 'auto-detect':
+      default:
+        descriptionPrompt = 'Auto-detect the background and describe the image in detail.';
     }
 
-    const descriptionPayload = {
+    const descriptionResult = await model.generateContent({
       contents: [
         {
-          role: "user",
+          role: 'user',
           parts: [
             { text: descriptionPrompt },
             {
               inlineData: {
-                mimeType,
-                data: imageBase64
-              }
-            }
-          ]
-        }
-      ]
-    };
-
-    const descriptionResponse = await fetch(apiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(descriptionPayload)
-    });
-
-    const descriptionJson = await descriptionResponse.json();
-    const descriptionText = descriptionJson.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
-    // 2. Keyword generation
-    const productHint = productTypes?.length
-      ? `Consider these product types for keywords: ${productTypes.join(", ")}.`
-      : "";
-
-    const keywordPrompt = `Based on this image description, generate a JSON object with two arrays: "shortTailKeywords" and "longTailKeywords". Use Etsy-style SEO terms. ${productHint}
-Description: "${descriptionText}"`;
-
-    const keywordPayload = {
-      contents: [{ role: "user", parts: [{ text: keywordPrompt }] }],
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: "OBJECT",
-          properties: {
-            shortTailKeywords: {
-              type: "ARRAY",
-              items: { type: "STRING" }
+                mimeType: mimeType,
+                data: imageBase64,
+              },
             },
-            longTailKeywords: {
-              type: "ARRAY",
-              items: { type: "STRING" }
-            }
-          }
-        }
-      }
-    };
-
-    const keywordResponse = await fetch(apiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(keywordPayload)
+          ],
+        },
+      ],
     });
 
-    const keywordJson = await keywordResponse.json();
-    const rawText = keywordJson.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    const cleanedJson = rawText.replace(/[“”]/g, '"');
-    const parsed = JSON.parse(cleanedJson);
+    const description =
+      descriptionResult?.response?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+
+    if (!description) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: 'Failed to generate description.' }),
+      };
+    }
+
+    const productHint = productTypes.length
+      ? ` Focus on these product types: ${productTypes.join(', ')}.`
+      : '';
+
+    const keywordsPrompt = `Generate a list of 6 short-tail keywords and 6 long-tail keywords based on this image description for SEO and product listing purposes.${productHint} Return as JSON with two arrays: shortTailKeywords and longTailKeywords.\n\nDescription:\n${description}`;
+
+    const keywordsResult = await model.generateContent({
+      contents: [
+        {
+          role: 'user',
+          parts: [{ text: keywordsPrompt }],
+        },
+      ],
+    });
+
+    const keywordsText =
+      keywordsResult?.response?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+
+    let shortTailKeywords = [];
+    let longTailKeywords = [];
+
+    try {
+      const parsed = JSON.parse(keywordsText);
+      shortTailKeywords = parsed.shortTailKeywords || [];
+      longTailKeywords = parsed.longTailKeywords || [];
+    } catch (err) {
+      console.warn('Failed to parse keywords:', err);
+    }
 
     return {
       statusCode: 200,
       body: JSON.stringify({
-        description: descriptionText,
-        shortTailKeywords: parsed.shortTailKeywords || [],
-        longTailKeywords: parsed.longTailKeywords || []
+        description,
+        shortTailKeywords,
+        longTailKeywords,
       }),
     };
-
   } catch (error) {
+    console.error('Error in /generate:', error);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: error.message }),
+      body: JSON.stringify({ error: error.message || 'Internal Server Error' }),
     };
   }
 };
