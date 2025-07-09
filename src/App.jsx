@@ -1,6 +1,16 @@
 // App.jsx
 import React, { useState } from 'react';
-import { Copy, Check } from 'lucide-react';
+import {
+  Copy,
+  Check,
+  Upload,
+  Image as ImageIcon,
+  Settings,
+  Sparkles,
+  FileText,
+  Tag,
+  Coffee,
+} from 'lucide-react';
 
 function App() {
   const [selectedImage, setSelectedImage] = useState(null);
@@ -119,11 +129,28 @@ function App() {
         <img src="/logo.jpg" alt="Logo" className="h-16" />
       </div>
       <p className="text-center text-red-600 font-semibold mb-4">
-        This App is in Beta. Expect Crashes, Bugs, and Possible Incorrect Descriptions. If errors occur, refresh the page or wait a few minutes due to high usage.
+        This App is in Beta. Expect Crashes, Bugs, and Possible Incorrect Descriptions.
+        If errors occur, refresh the page or wait a few minutes due to high usage.
       </p>
 
-      <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-6">
-        <h1 className="text-2xl font-bold mb-4">LavenderDragonDesign's Image Describer and Keyword Generator</h1>
+      
+<div className="max-w-3xl mx-auto bg-white rounded-xl shadow-lg p-6 relative">
+  <button
+    onClick={() => setShowPopup(false)}
+    className="absolute top-2 right-2"
+    aria-label="Close popup"
+  >
+    <img src="/x-icon.png" alt="Close" className="h-5 w-5" />
+  </button>
+        <h1 className="text-2xl font-bold mb-4 flex items-center gap-2">
+          <Sparkles size={20} />
+          LavenderDragonDesign's Image Describer and Keyword Generator
+        </h1>
+
+        <label className="flex items-center gap-2 font-medium mb-2">
+          <Upload size={16} />
+          Upload Image:
+        </label>
         <input type="file" onChange={handleImageChange} className="mb-4" />
 
         {selectedImage && (
@@ -136,7 +163,10 @@ function App() {
         )}
 
         <div className="mb-4">
-          <label className="block font-medium mb-1">Select Product Types (optional for Keywords):</label>
+          <label className="block font-medium mb-1 flex items-center gap-2">
+            <Tag size={16} />
+            Select Product Types:
+          </label>
           {productTypes.map((type) => (
             <label key={type} className="inline-flex items-center mr-4">
               <input
@@ -150,7 +180,10 @@ function App() {
         </div>
 
         <div className="mb-4">
-          <label className="block font-medium mb-1">Select Background Color:</label>
+          <label className="block font-medium mb-1 flex items-center gap-2">
+            <ImageIcon size={16} />
+            Background Color:
+          </label>
           {['auto-detect', 'black', 'white', 'transparent'].map((color) => (
             <label key={color} className="inline-flex items-center mr-4">
               <input
@@ -167,8 +200,9 @@ function App() {
         <button
           onClick={analyzeImageAndGenerateKeywords}
           disabled={isLoading}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold transition"
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold transition flex items-center justify-center gap-2"
         >
+          <Sparkles size={18} />
           {isLoading ? 'Processing...' : 'Analyze Image'}
         </button>
 
@@ -178,7 +212,10 @@ function App() {
           <div className="mt-4">
             {imageDescription && (
               <div className="mb-6">
-                <h2 className="font-bold mb-1">Description</h2>
+                <h2 className="font-bold mb-1 flex items-center gap-2">
+                  <FileText size={16} />
+                  Description
+                </h2>
                 <div className="flex items-start gap-2">
                   <textarea
                     readOnly
@@ -203,7 +240,10 @@ function App() {
 
             {shortTailKeywords.length > 0 && (
               <div className="mb-6">
-                <h2 className="font-bold mb-1">Short-Tail Keywords</h2>
+                <h2 className="font-bold mb-1 flex items-center gap-2">
+                  <Tag size={16} />
+                  Short-Tail Keywords
+                </h2>
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
@@ -228,7 +268,10 @@ function App() {
 
             {longTailKeywords.length > 0 && (
               <div className="mb-6">
-                <h2 className="font-bold mb-1">Long-Tail Keywords</h2>
+                <h2 className="font-bold mb-1 flex items-center gap-2">
+                  <Tag size={16} />
+                  Long-Tail Keywords
+                </h2>
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
@@ -254,7 +297,10 @@ function App() {
         )}
 
         <div className="mt-6 text-center text-sm text-gray-500">
-          v 1.0 - Dev. By A. Kessler With Love,<br />
+          <div className="flex justify-center items-center gap-2 mb-1 text-gray-600">
+            <Coffee size={16} />
+            v 1.0 - Dev. By A. Kessler With Love
+          </div>
           <a
             href="https://www.buymeacoffee.com/lavenderdragondesigns"
             target="_blank"
